@@ -15,50 +15,126 @@ const DetallesViaje = ({ viaje, volver }) => {
 
     // Verificamos si el barco ya llegó a su límite
     const tripulacionLlena = tripulacion.length >= capacidadMaxima;
-    // 2. Estado para guardar el personal de la BD
     const [personalDisponible, setPersonalDisponible] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [isLoadingTripulacion, setIsLoadingTripulacion] = useState(true);
 
-    // 3. Modificamos la estructura del nuevo tripulante para que maneje el ID real
-    const [nuevoTripulante, setNuevoTripulante] = useState({ id_personal: '', nombre: '', rol: 'Marinero Principal' });
-
-    // 4. Disparamos la búsqueda a la base de datos al abrir el componente
+    const [nuevoTripulante, setNuevoTripulante] = useState({ id_personal: '', nombre: '', rol_id: '', rol_nombre: '' });
     useEffect(() => {
-        const cargarPersonal = async () => {
+        const cargarDatos = async () => {
             try {
-                const res = await api.get('/catalogos');
-                // Aunque la variable del backend se llama 'capitanes', sabemos que contiene a TODO el personal
-                setPersonalDisponible(res.data.capitanes || []);
+                // 1. Cargar tripulación actual del viaje
+                let tripDB = [];
+                try {
+                    const resTrip = await api.get(`/viajes-personal/viaje/${viaje.via_id}`);
+                    tripDB = resTrip.data.map(t => ({
+                        id: t.via_per_fk_personal,
+                        via_per_id: t.via_per_id, // ID del registro en viaje_personal
+                        nombre: t.personal_nombre,
+                        rol: t.rol_nombre,
+                        rol_id: t.via_per_fk_rol
+                    }));
+                } catch (e) { console.error("Error al cargar tripulacion del viaje:", e); }
+
+                // Mantener al capitán
+                const tripulacionInicial = [{ id: 'cap', nombre: viaje.capitan, rol: 'Capitán (Líder)' }, ...tripDB];
+                setTripulacion(tripulacionInicial);
+
+                // 2. Cargar Personal Disponible (Excluyendo ocupados)
+                let personalMapeado = [];
+                try {
+                    const resPers = await api.get('/personal');
+                    let ocupados = new Set();
+                    
+                    try {
+                        const resAllViajes = await api.get('/viajes').catch(() => api.get('/viaje'));
+                        const viajesActivos = resAllViajes.data.filter(v => ['Pendiente', 'En Preparación', 'En Curso'].includes(v.via_estatus) && v.via_id !== viaje.via_id);
+                        viajesActivos.forEach(v => ocupados.add(v.via_fk_capitan));
+                    } catch(e) { console.error("Error al cargar viajes:", e); }
+
+                    try {
+                        const resAllTrip = await api.get('/viajes-personal');
+                        resAllTrip.data
+                            .filter(t => ['Pendiente', 'En Preparación', 'En Curso'].includes(t.via_estatus) && t.via_per_fk_viaje !== viaje.via_id)
+                            .forEach(t => ocupados.add(t.via_per_fk_personal));
+                    } catch(e) { console.error("Error al cargar toda la tripulación:", e); }
+
+                    personalMapeado = resPers.data
+                        .filter(p => !ocupados.has(p.per_id))
+                        .map(p => ({
+                            per_id: p.per_id,
+                            nombre_completo: `${p.per_nombre} ${p.per_apellidos}`
+                        }));
+                } catch (e) { console.error("Error al cargar personal:", e); }
+                
+                setPersonalDisponible(personalMapeado);
+
+                // 3. Cargar Roles
+                try {
+                    const resRoles = await api.get('/roles');
+                    setRoles(resRoles.data);
+                } catch (e) { console.error("Error al cargar roles:", e); }
+
             } catch (error) {
-                console.error("Error al cargar el personal de la BD:", error);
+                console.error("Error general en cargarDatos:", error);
+            } finally {
+                setIsLoadingTripulacion(false);
             }
         };
-        cargarPersonal();
-    }, []);
+        cargarDatos();
+    }, [viaje.via_id]);
 
-    const agregarTripulante = (e) => {
+    const agregarTripulante = async (e) => {
         e.preventDefault();
-        if (!nuevoTripulante.id_personal) return;
+        if (!nuevoTripulante.id_personal || !nuevoTripulante.rol_id) return;
 
-        // Evitamos que suban al mismo marinero dos veces al barco
-        if (tripulacion.find(t => t.id === nuevoTripulante.id_personal)) {
+        if (!['Pendiente', 'En Preparación'].includes(viaje.via_estatus)) {
+            alert("No se pueden hacer cambios en la tripulación una vez que el viaje ha avanzado de la etapa de Preparación.");
+            return;
+        }
+
+        if (tripulacion.find(t => t.id === Number(nuevoTripulante.id_personal))) {
             alert("¡Este elemento ya se encuentra asignado a la tripulación actual!");
             return;
         }
 
-        setTripulacion([...tripulacion, {
-            id: nuevoTripulante.id_personal,
-            nombre: nuevoTripulante.nombre,
-            rol: nuevoTripulante.rol
-        }]);
+        try {
+            const res = await api.post('/viajes-personal', {
+                via_per_fk_viaje: viaje.via_id,
+                via_per_fk_personal: nuevoTripulante.id_personal,
+                via_per_fk_rol: nuevoTripulante.rol_id
+            });
 
-        // Limpiamos el formulario
-        setNuevoTripulante({ id_personal: '', nombre: '', rol: 'Marinero Principal' });
-        setMostrarModalTripulacion(false);
+            setTripulacion([...tripulacion, {
+                id: Number(nuevoTripulante.id_personal),
+                via_per_id: res.data.via_per_id,
+                nombre: nuevoTripulante.nombre,
+                rol: nuevoTripulante.rol_nombre,
+                rol_id: nuevoTripulante.rol_id
+            }]);
+
+            setNuevoTripulante({ id_personal: '', nombre: '', rol_id: '', rol_nombre: '' });
+            setMostrarModalTripulacion(false);
+        } catch (error) {
+            console.error("Error al asignar tripulante:", error);
+            alert(error.response?.data?.error || "Error al asignar el tripulante.");
+        }
     };
 
-    const eliminarTripulante = (id) => {
+    const eliminarTripulante = async (id, via_per_id) => {
         if (id === 'cap') return;
-        setTripulacion(tripulacion.filter(t => t.id !== id));
+        if (!['Pendiente', 'En Preparación'].includes(viaje.via_estatus)) {
+            alert("No se pueden eliminar tripulantes una vez que el viaje ha avanzado de la etapa de Preparación.");
+            return;
+        }
+
+        try {
+            await api.delete(`/viajes-personal/${via_per_id}`);
+            setTripulacion(tripulacion.filter(t => t.id !== id));
+        } catch (error) {
+            console.error("Error al desembarcar tripulante:", error);
+            alert("Error al eliminar el tripulante.");
+        }
     };
 
     // --- DATOS SIMULADOS PARA KPIs ---
@@ -201,8 +277,8 @@ const DetallesViaje = ({ viaje, volver }) => {
                                             </p>
                                         </div>
                                     </div>
-                                    {tripulante.id !== 'cap' && (
-                                        <button onClick={() => eliminarTripulante(tripulante.id)} className="text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                    {tripulante.id !== 'cap' && ['Pendiente', 'En Preparación'].includes(viaje.via_estatus) && (
+                                        <button onClick={() => eliminarTripulante(tripulante.id, tripulante.via_per_id)} className="text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all" title="Desembarcar">
                                             <XCircle size={16} />
                                         </button>
                                     )}
@@ -210,17 +286,19 @@ const DetallesViaje = ({ viaje, volver }) => {
                             ))}
                         </div>
 
-                        {/* Botón dinámico que se bloquea al llegar al límite */}
                         <button
                             onClick={() => setMostrarModalTripulacion(true)}
-                            disabled={tripulacionLlena}
-                            className={`w-full mt-4 py-3 border border-dashed rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${tripulacionLlena
-                                    ? 'border-red-900/50 text-red-500 bg-red-500/5 cursor-not-allowed'
+                            disabled={tripulacionLlena || !['Pendiente', 'En Preparación'].includes(viaje.via_estatus)}
+                            className={`w-full mt-4 py-3 border border-dashed rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                tripulacionLlena || !['Pendiente', 'En Preparación'].includes(viaje.via_estatus)
+                                    ? 'border-zinc-800 text-zinc-600 bg-zinc-900/50 cursor-not-allowed'
                                     : 'border-zinc-700 text-emerald-500 hover:bg-emerald-500/10'
                                 }`}
                         >
                             {tripulacionLlena ? (
                                 <><XCircle size={16} /> Capacidad Máxima Alcanzada</>
+                            ) : !['Pendiente', 'En Preparación'].includes(viaje.via_estatus) ? (
+                                <><XCircle size={16} /> Tripulación Cerrada (Viaje en curso)</>
                             ) : (
                                 <><Plus size={16} /> Agregar Personal</>
                             )}
@@ -279,11 +357,23 @@ const DetallesViaje = ({ viaje, volver }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-zinc-400 mb-1">Rol a Bordo</label>
-                                <select value={nuevoTripulante.rol} onChange={(e) => setNuevoTripulante({ ...nuevoTripulante, rol: e.target.value })} className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500">
-                                    <option value="Marinero Principal">Marinero Principal</option>
-                                    <option value="Motorista">Motorista</option>
-                                    <option value="Ayudante">Ayudante</option>
-                                    <option value="Buzo">Buzo</option>
+                                <select 
+                                    value={nuevoTripulante.rol_id} 
+                                    onChange={(e) => {
+                                        const rolSeleccionado = roles.find(r => r.rol_id.toString() === e.target.value);
+                                        setNuevoTripulante({ 
+                                            ...nuevoTripulante, 
+                                            rol_id: e.target.value,
+                                            rol_nombre: rolSeleccionado ? rolSeleccionado.rol_nombre : ''
+                                        });
+                                    }} 
+                                    required
+                                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                >
+                                    <option value="" disabled>Selecciona un rol...</option>
+                                    {roles.map(r => (
+                                        <option key={r.rol_id} value={r.rol_id}>{r.rol_nombre}</option>
+                                    ))}
                                 </select>
                             </div>
                             <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition-all flex justify-center items-center gap-2">
