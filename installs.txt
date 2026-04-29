@@ -1,0 +1,11 @@
+pip install pandas sqlalchemy psycopg2
+pip install pandas sqlalchemy psycopg2
+
+Entras a la carpeta backend (cd backend) y ejecutas:
+npm install express pg cors dotenv
+npm install -D nodemon
+El Radar Frontend (Node.js / NPM)
+npm install -D tailwindcss postcss autoprefixer
+npm install axios lucide-react recharts
+
+npm install

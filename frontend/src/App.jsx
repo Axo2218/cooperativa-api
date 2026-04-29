@@ -1,100 +1,112 @@
-import React, { useEffect, useState } from 'react';
-import api from './services/api';
-import ViajeCard from './components/ViajeCard';
-import AdminViajes from './components/AdminViajes';
-import DetallesViaje from './components/DetallesViaje'; // <-- 1. Importamos la nueva bitácora
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+
+// Components
+import Navigation from './components/Navigation';
+import Dashboard from './components/Dashboard';
+import DetallesViajeWrapper from './components/DetallesViajeWrapper';
+
+// CRUD Components - Operaciones
+import ViajeCRUD from './components/ViajeCRUD';
+import ViajePersonalCRUD from './components/ViajePersonalCRUD';
+import ViajeDetalleCapturaCRUD from './components/ViajeDetalleCapturaCRUD';
+import ViajeGastoCRUD from './components/ViajeGastoCRUD';
+import PescaHistoricoCRUD from './components/PescaHistoricoCRUD';
+
+// CRUD Components - Flota
+import EmbarcacionCRUD from './components/EmbarcacionCRUD';
+import MantenimientoEmbarcacionCRUD from './components/MantenimientoEmbarcacionCRUD';
+import BitacoraMantenimientoCRUD from './components/BitacoraMantenimientoCRUD';
+import ActivosFijosCRUD from './components/ActivosFijosCRUD';
+
+// CRUD Components - Finanzas
+import VentaCRUD from './components/VentaCRUD';
+import DetalleVentasCRUD from './components/DetalleVentasCRUD';
+import ComprasInsumosCRUD from './components/ComprasInsumosCRUD';
+import DetalleCompraInsumosCRUD from './components/DetalleCompraInsumosCRUD';
+import FacturacionCRUD from './components/FacturacionCRUD';
+import CuotasCRUD from './components/CuotasCRUD';
+import PagosNominaCRUD from './components/PagosNominaCRUD';
+
+// CRUD Components - Catálogos
+import EspeciesCRUD from './components/EspeciesCRUD';
+import CategoriaEspecieCRUD from './components/CategoriaEspecieCRUD';
+import InsumosCRUD from './components/InsumosCRUD';
+import CategoriaCRUD from './components/CategoriaCRUD'; // Cat insumos
+import CatTipoActivoCRUD from './components/CatTipoActivoCRUD';
+import CatTipoInstalacionCRUD from './components/CatTipoInstalacionCRUD';
+
+// CRUD Components - RRHH
+import PersonalCRUD from './components/PersonalCRUD';
+import RolCRUD from './components/RolCRUD';
+import ClientesCRUD from './components/ClientesCRUD';
+import CooperativaCRUD from './components/CooperativaCRUD';
+import AlertaSistemaCRUD from './components/AlertaSistemaCRUD';
 
 function App() {
-  const [viajes, setViajes] = useState([]);
-  const [vistaActiva, setVistaActiva] = useState('embarcaciones'); // 'embarcaciones' o 'admin'
-  // <-- 2. Nuevo estado para guardar qué barco se seleccionó
-  const [viajeSeleccionado, setViajeSeleccionado] = useState(null);
-  const cargarViajes = async () => {
-    try {
-      const respuesta = await api.get('/viajes');
-      setViajes(respuesta.data);
-    } catch (error) {
-      console.error('Error al conectar con la base operativa:', error);
-    }
-  };
-
-  useEffect(() => {
-    cargarViajes();
-  }, []);
-
-  // <-- 3. Función que se dispara al dar clic en la tarjeta
-  const abrirDetalles = (viaje) => {
-    setViajeSeleccionado(viaje);
-    setVistaActiva('detalles');
-
-  };
-
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans">
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col">
+        <Navigation />
+        
+        <main className="flex-1 w-full relative">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            {/* Dashboard y Detalles */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/viajes/:id" element={<DetallesViajeWrapper />} />
+            
+            {/* Operaciones */}
+            <Route path="/operaciones/viajes" element={<ViajeCRUD />} />
+            <Route path="/operaciones/tripulacion" element={<ViajePersonalCRUD />} />
+            <Route path="/operaciones/capturas" element={<ViajeDetalleCapturaCRUD />} />
+            <Route path="/operaciones/gastos" element={<ViajeGastoCRUD />} />
+            <Route path="/operaciones/historico" element={<PescaHistoricoCRUD />} />
 
-      {/* Navbar */}
-      <nav className="border-b border-zinc-800 bg-slate-950 px-8 py-4 flex justify-between items-center sticky top-0 z-40">
-        <div className="text-xl font-bold tracking-tighter">
-          Coop<span className="text-emerald-500">Pesca</span>
-        </div>
-        <div className="flex gap-6 text-sm font-medium">
-          <button
-            onClick={() => setVistaActiva('dashboard')}
-            className={`transition-colors ${(vistaActiva === 'dashboard' || vistaActiva === 'detalles') ? 'text-emerald-500 border-b-2 border-emerald-500 pb-1' : 'text-zinc-400 hover:text-white'}`}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => setVistaActiva('admin')}
-            className={`transition-colors ${vistaActiva === 'admin' ? 'text-emerald-500 border-b-2 border-emerald-500 pb-1' : 'text-zinc-400 hover:text-white'}`}
-          >
-            Súper Admin
-          </button>
-        </div>
-        <div className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-          <span>Capitán Axo</span>
-        </div>
-      </nav>
+            {/* Flota */}
+            <Route path="/flota/embarcaciones" element={<EmbarcacionCRUD />} />
+            <Route path="/flota/mantenimiento" element={<MantenimientoEmbarcacionCRUD />} />
+            <Route path="/flota/bitacora" element={<BitacoraMantenimientoCRUD />} />
+            <Route path="/flota/activos" element={<ActivosFijosCRUD />} />
 
-      <div className="max-w-6xl mx-auto px-6 py-12">
+            {/* Finanzas */}
+            <Route path="/finanzas/ventas" element={<VentaCRUD />} />
+            <Route path="/finanzas/detalle-ventas" element={<DetalleVentasCRUD />} />
+            <Route path="/finanzas/compras" element={<ComprasInsumosCRUD />} />
+            <Route path="/finanzas/detalle-compras" element={<DetalleCompraInsumosCRUD />} />
+            <Route path="/finanzas/facturacion" element={<FacturacionCRUD />} />
+            <Route path="/finanzas/cuotas" element={<CuotasCRUD />} />
+            <Route path="/finanzas/nomina" element={<PagosNominaCRUD />} />
 
-        {/* RENDERIZADO CONDICIONAL DE PANTALLAS */}
+            {/* Catálogos */}
+            <Route path="/catalogos/especies" element={<EspeciesCRUD />} />
+            <Route path="/catalogos/cat-especies" element={<CategoriaEspecieCRUD />} />
+            <Route path="/catalogos/insumos" element={<InsumosCRUD />} />
+            <Route path="/catalogos/cat-insumos" element={<CategoriaCRUD />} />
+            <Route path="/catalogos/cat-activos" element={<CatTipoActivoCRUD />} />
+            <Route path="/catalogos/cat-instalaciones" element={<CatTipoInstalacionCRUD />} />
 
-        {vistaActiva === 'dashboard' && (
-          <>
-            <div className="text-center mb-16">
-              <h1 className="text-5xl font-extrabold text-white mb-4 tracking-tight">
-                Centro de <span className="text-emerald-500">Mando de Flota</span>
-              </h1>
-              <p className="text-zinc-400 text-lg">Monitorea los viajes en tiempo real.</p>
-            </div>
+            {/* RRHH y Organización */}
+            <Route path="/rh/personal" element={<PersonalCRUD />} />
+            <Route path="/rh/roles" element={<RolCRUD />} />
+            <Route path="/rh/clientes" element={<ClientesCRUD />} />
+            <Route path="/rh/cooperativas" element={<CooperativaCRUD />} />
+            
+            {/* Alertas */}
+            <Route path="/alertas" element={<AlertaSistemaCRUD />} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {viajes.map(viaje => (
-                <ViajeCard
-                  key={viaje.via_id}
-                  viaje={viaje}
-                  onVerDetalles={() => abrirDetalles(viaje)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-
-        {vistaActiva === 'admin' && (
-          <AdminViajes viajes={viajes} recargarViajes={cargarViajes} />
-        )}
-
-        {/* 5. Nueva vista de detalles */}
-        {vistaActiva === 'detalles' && viajeSeleccionado && (
-          <DetallesViaje
-            viaje={viajeSeleccionado}
-            volver={() => setVistaActiva('dashboard')}
-          />
-        )}
-
+            {/* 404 */}
+            <Route path="*" element={
+              <div className="flex flex-col items-center justify-center py-32">
+                <h2 className="text-4xl font-bold text-emerald-500 mb-4">404</h2>
+                <p className="text-zinc-400">La página solicitada no existe o está en construcción.</p>
+              </div>
+            } />
+          </Routes>
+        </main>
       </div>
-    </div>
+    </BrowserRouter>
   );
 }
 
