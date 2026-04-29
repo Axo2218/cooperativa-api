@@ -138,7 +138,9 @@ const eliminarViaje = async (req, res) => {
         res.status(200).json({ mensaje: "Viaje eliminado con éxito" });
     } catch (error) {
         console.error(error);
-        if (error.code === '23503') return res.status(400).json({ error: 'No se puede eliminar el viaje porque tiene gastos o detalles de captura asociados.' });
+        if (error.code === '23503' || error.code === '23001') {
+            return res.status(400).json({ error: 'No se puede eliminar el viaje porque tiene información (gastos, capturas, liquidaciones o tripulación) asociada.' });
+        }
         res.status(500).json({ error: 'Error crítico al intentar eliminar el viaje' });
     }
 };

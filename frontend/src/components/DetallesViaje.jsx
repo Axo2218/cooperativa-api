@@ -45,19 +45,19 @@ const DetallesViaje = ({ viaje, volver }) => {
                 try {
                     const resPers = await api.get('/personal');
                     let ocupados = new Set();
-                    
+
                     try {
                         const resAllViajes = await api.get('/viajes').catch(() => api.get('/viaje'));
                         const viajesActivos = resAllViajes.data.filter(v => ['Pendiente', 'En Preparación', 'En Curso'].includes(v.via_estatus) && v.via_id !== viaje.via_id);
                         viajesActivos.forEach(v => ocupados.add(v.via_fk_capitan));
-                    } catch(e) { console.error("Error al cargar viajes:", e); }
+                    } catch (e) { console.error("Error al cargar viajes:", e); }
 
                     try {
                         const resAllTrip = await api.get('/viajes-personal');
                         resAllTrip.data
                             .filter(t => ['Pendiente', 'En Preparación', 'En Curso'].includes(t.via_estatus) && t.via_per_fk_viaje !== viaje.via_id)
                             .forEach(t => ocupados.add(t.via_per_fk_personal));
-                    } catch(e) { console.error("Error al cargar toda la tripulación:", e); }
+                    } catch (e) { console.error("Error al cargar toda la tripulación:", e); }
 
                     personalMapeado = resPers.data
                         .filter(p => !ocupados.has(p.per_id))
@@ -66,7 +66,7 @@ const DetallesViaje = ({ viaje, volver }) => {
                             nombre_completo: `${p.per_nombre} ${p.per_apellidos}`
                         }));
                 } catch (e) { console.error("Error al cargar personal:", e); }
-                
+
                 setPersonalDisponible(personalMapeado);
 
                 // 3. Cargar Roles
@@ -289,8 +289,7 @@ const DetallesViaje = ({ viaje, volver }) => {
                         <button
                             onClick={() => setMostrarModalTripulacion(true)}
                             disabled={tripulacionLlena || !['Pendiente', 'En Preparación'].includes(viaje.via_estatus)}
-                            className={`w-full mt-4 py-3 border border-dashed rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                                tripulacionLlena || !['Pendiente', 'En Preparación'].includes(viaje.via_estatus)
+                            className={`w-full mt-4 py-3 border border-dashed rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${tripulacionLlena || !['Pendiente', 'En Preparación'].includes(viaje.via_estatus)
                                     ? 'border-zinc-800 text-zinc-600 bg-zinc-900/50 cursor-not-allowed'
                                     : 'border-zinc-700 text-emerald-500 hover:bg-emerald-500/10'
                                 }`}
@@ -357,16 +356,16 @@ const DetallesViaje = ({ viaje, volver }) => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-zinc-400 mb-1">Rol a Bordo</label>
-                                <select 
-                                    value={nuevoTripulante.rol_id} 
+                                <select
+                                    value={nuevoTripulante.rol_id}
                                     onChange={(e) => {
                                         const rolSeleccionado = roles.find(r => r.rol_id.toString() === e.target.value);
-                                        setNuevoTripulante({ 
-                                            ...nuevoTripulante, 
+                                        setNuevoTripulante({
+                                            ...nuevoTripulante,
                                             rol_id: e.target.value,
                                             rol_nombre: rolSeleccionado ? rolSeleccionado.rol_nombre : ''
                                         });
-                                    }} 
+                                    }}
                                     required
                                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
                                 >
