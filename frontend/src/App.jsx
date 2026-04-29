@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import DetallesViajeWrapper from './components/DetallesViajeWrapper';
+import AIChatbot from './components/AIChatbot';
 
 // CRUD Components - Operaciones
 import ViajeCRUD from './components/ViajeCRUD';
@@ -105,6 +106,32 @@ function App() {
             } />
           </Routes>
         </main>
+
+        <footer className="py-8 border-t border-zinc-900 bg-black/40 backdrop-blur-md">
+          <div className="container mx-auto px-6 flex flex-col items-center text-center space-y-3">
+            <div className="flex flex-col items-center">
+              <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.3em] mb-1">
+                © {new Date().getFullYear()} · Josué Segura Milla
+              </p>
+              <div className="h-px w-12 bg-emerald-500/30 mb-2"></div>
+            </div>
+            
+            <p className="text-zinc-600 text-[10px] max-w-2xl leading-relaxed">
+              Sistema de Gestión Pesquera e Inteligencia Operativa desarrollado para la cátedra de 
+              <span className="text-zinc-400 font-bold mx-1 text-[11px]">Arquitectura Big Data y Ciencia de Datos</span> 
+              bajo la dirección del <span className="text-zinc-400 font-bold mx-1 text-[11px]">M.A Jose Manuel Aguilar</span>.
+            </p>
+
+            <div className="flex flex-wrap justify-center gap-2 mt-2">
+              {['React 18', 'Node.js', 'PostgreSQL', 'Tailwind CSS', 'Express', 'Recharts'].map(tech => (
+                <span key={tech} className="text-[8px] font-bold bg-zinc-900/50 text-zinc-500 px-2 py-1 rounded-md border border-zinc-800/50 hover:border-emerald-500/30 hover:text-emerald-500 transition-all cursor-default">
+                  {tech}
+                </span>
+              ))}
+            </div>
+          </div>
+        </footer>
+        <AIChatbot />
       </div>
     </BrowserRouter>
   );

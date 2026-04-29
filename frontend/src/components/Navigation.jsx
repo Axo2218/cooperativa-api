@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, Ship, Database, DollarSign, Users, ShieldAlert, Settings } from 'lucide-react';
+import { ChevronDown, Ship, Database, DollarSign, Users, ShieldAlert, Settings, Anchor } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();
-
-  const isActive = (path) => location.pathname.startsWith(path);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const navRefs = useRef({});
 
   const navGroups = [
     {
+      id: 'operaciones',
       title: 'Operaciones',
       icon: <Ship size={16} />,
       routes: [
@@ -20,6 +21,7 @@ const Navigation = () => {
       ]
     },
     {
+      id: 'embarcaciones',
       title: 'Embarcaciones',
       icon: <Anchor size={16} />,
       routes: [
@@ -30,6 +32,7 @@ const Navigation = () => {
       ]
     },
     {
+      id: 'finanzas',
       title: 'Finanzas',
       icon: <DollarSign size={16} />,
       routes: [
@@ -43,6 +46,7 @@ const Navigation = () => {
       ]
     },
     {
+      id: 'catalogos',
       title: 'Catálogos',
       icon: <Database size={16} />,
       routes: [
@@ -55,6 +59,7 @@ const Navigation = () => {
       ]
     },
     {
+      id: 'personal',
       title: 'Personal',
       icon: <Users size={16} />,
       routes: [
@@ -66,6 +71,49 @@ const Navigation = () => {
     }
   ];
 
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const updateIndicator = () => {
+      let activeId = '';
+      
+      if (location.pathname === '/dashboard' || location.pathname.startsWith('/viajes/')) {
+        activeId = 'dashboard';
+      } else if (location.pathname === '/alertas') {
+        activeId = 'alertas';
+      } else {
+        const activeGroup = navGroups.find(g => g.routes.some(r => location.pathname === r.path));
+        if (activeGroup) activeId = activeGroup.id;
+      }
+
+      const activeElement = navRefs.current[activeId];
+      const container = containerRef.current;
+
+      if (activeElement && container) {
+        const activeRect = activeElement.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        
+        setIndicatorStyle({
+          left: activeRect.left - containerRect.left,
+          width: activeRect.width,
+          opacity: 1
+        });
+      } else {
+        setIndicatorStyle(prev => ({ ...prev, opacity: 0 }));
+      }
+    };
+
+    // Ejecutar inmediatamente y tras un breve delay por si el DOM cambia
+    updateIndicator();
+    const timer = setTimeout(updateIndicator, 100);
+    
+    window.addEventListener('resize', updateIndicator);
+    return () => {
+      window.removeEventListener('resize', updateIndicator);
+      clearTimeout(timer);
+    };
+  }, [location.pathname]);
+
   return (
     <nav className="border-b border-zinc-800 bg-slate-950 py-4 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto w-full px-6 flex justify-between items-center">
@@ -76,53 +124,68 @@ const Navigation = () => {
         </Link>
 
         {/* CENTER MENUS */}
-        <div className="flex gap-2 text-sm font-medium">
+        <div ref={containerRef} className="flex gap-2 text-sm font-medium relative items-center h-10">
+          
+          {/* Sliding Indicator */}
+          <div 
+            className="absolute bottom-[-17px] h-[3px] bg-emerald-500 rounded-full transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) shadow-[0_0_12px_rgba(16,185,129,0.5)]"
+            style={{ 
+              left: `${indicatorStyle.left}px`, 
+              width: `${indicatorStyle.width}px`,
+              opacity: indicatorStyle.opacity 
+            }}
+          />
 
-          {/* Dashboard Link (Direct) */}
+          {/* Dashboard Link */}
           <Link
             to="/dashboard"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2
-                ${location.pathname === '/dashboard' || location.pathname.startsWith('/viajes/') ? 'text-emerald-500 border-b-2 border-emerald-500 rounded-b-none' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}
+            ref={el => navRefs.current['dashboard'] = el}
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2 relative z-10
+                ${(location.pathname === '/dashboard' || location.pathname.startsWith('/viajes/')) ? 'text-emerald-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'}
               `}
           >
             Dashboard
           </Link>
 
           {/* Dropdowns */}
-          {navGroups.map((group, idx) => (
-            <div key={idx} className="relative group">
-              <button
-                className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2 
-                  ${group.routes.some(r => location.pathname === r.path) ? 'text-emerald-500 border-b-2 border-emerald-500 rounded-b-none' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}
-                `}
-              >
-                {group.icon}
-                {group.title}
-                <ChevronDown size={14} className="opacity-50 group-hover:rotate-180 transition-transform duration-200" />
-              </button>
+          {navGroups.map((group, idx) => {
+            const isGroupActive = group.routes.some(r => location.pathname === r.path);
+            return (
+              <div key={idx} className="relative group">
+                <button
+                  ref={el => navRefs.current[group.id] = el}
+                  className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2 relative z-10
+                    ${isGroupActive ? 'text-emerald-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'}
+                  `}
+                >
+                  {group.icon}
+                  {group.title}
+                  <ChevronDown size={14} className="opacity-50 group-hover:rotate-180 transition-transform duration-200" />
+                </button>
 
-              {/* Dropdown Menu Container */}
-              <div className="absolute top-full left-0 mt-1 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-left shadow-2xl bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden z-50 py-2">
-                {group.routes.map((route, rIdx) => (
-                  <Link
-                    key={rIdx}
-                    to={route.path}
-                    className={`block px-4 py-2 text-sm transition-colors
-                      ${location.pathname === route.path ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}
-                    `}
-                  >
-                    {route.label}
-                  </Link>
-                ))}
+                <div className="absolute top-full left-0 mt-3 w-60 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top shadow-2xl bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden z-50 py-2">
+                  {group.routes.map((route, rIdx) => (
+                    <Link
+                      key={rIdx}
+                      to={route.path}
+                      className={`block px-4 py-2.5 text-sm transition-colors
+                        ${location.pathname === route.path ? 'bg-emerald-500/10 text-emerald-400' : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'}
+                      `}
+                    >
+                      {route.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Alertas */}
           <Link
             to="/alertas"
-            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2
-                ${location.pathname === '/alertas' ? 'text-emerald-500 border-b-2 border-emerald-500 rounded-b-none' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}
+            ref={el => navRefs.current['alertas'] = el}
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2 relative z-10
+                ${location.pathname === '/alertas' ? 'text-emerald-500' : 'text-zinc-400 hover:text-white hover:bg-zinc-900/50'}
               `}
           >
             <ShieldAlert size={16} /> Alertas
@@ -140,8 +203,5 @@ const Navigation = () => {
     </nav>
   );
 };
-
-// Necesito importar Anchor ya que lucide-react lo tiene pero no lo importé arriba.
-import { Anchor } from 'lucide-react';
 
 export default Navigation;

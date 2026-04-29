@@ -242,8 +242,8 @@ const DetallesViaje = ({ viaje, volver }) => {
             const res = await api.post('/viajeDetalleCaptura', {
                 det_cap_fk_viaje: viaje.via_id,
                 det_cap_fk_especie: nuevaCaptura.especie_id,
-                det_cap_kilogramos: nuevaCaptura.kilogramos,
-                det_cap_precio_pactado: nuevaCaptura.precio
+                det_cap_kilogramos: parseFloat(nuevaCaptura.kilogramos),
+                det_cap_precio_pactado: parseFloat(nuevaCaptura.precio || 0)
             });
 
             const esp = especies.find(e => e.esp_id.toString() === nuevaCaptura.especie_id.toString());
@@ -547,8 +547,31 @@ const DetallesViaje = ({ viaje, volver }) => {
                             {viaje.via_estatus === 'En Puerto' && (
                                 <form onSubmit={registrarCaptura} className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                                     <div className="md:col-span-2"><label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Especie</label><select className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20" value={nuevaCaptura.especie_id} onChange={(e) => { const esp = especies.find(x => x.esp_id.toString() === e.target.value); setNuevaCaptura({ ...nuevaCaptura, especie_id: e.target.value, precio: esp?.esp_precio_kilo_referencia || '' }); }} required><option value="">Seleccionar...</option>{especies.map(e => <option key={e.esp_id} value={e.esp_id}>{e.esp_nombre_comun}</option>)}</select></div>
-                                    <div><label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">KG</label><input type="number" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none" value={nuevaCaptura.kilogramos} onChange={(e) => setNuevaCaptura({ ...nuevaCaptura, kilogramos: e.target.value })} required /></div>
-                                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">Registrar</button>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">KG</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20" 
+                                            value={nuevaCaptura.kilogramos} 
+                                            onChange={(e) => setNuevaCaptura({ ...nuevaCaptura, kilogramos: e.target.value })} 
+                                            required 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Precio/KG (Ref)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20 font-mono" 
+                                            value={nuevaCaptura.precio} 
+                                            onChange={(e) => setNuevaCaptura({ ...nuevaCaptura, precio: e.target.value })} 
+                                            required 
+                                        />
+                                    </div>
+                                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+                                        Registrar
+                                    </button>
                                 </form>
                             )}
 
@@ -694,9 +717,21 @@ const DetallesViaje = ({ viaje, volver }) => {
                                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
                                 >
                                     <option value="" disabled>Selecciona un tripulante...</option>
-                                    {personalDisponible.map(p => (
-                                        <option key={p.per_id} value={p.per_id}>{p.nombre_completo}</option>
-                                    ))}
+                                    {personalDisponible.map(p => {
+                                        // Verificar si esta persona ya está en la tripulación actual (incluyendo capitán)
+                                        const yaAsignado = tripulacion.some(t => t.id === p.per_id) || p.per_id === viaje.via_fk_capitan;
+                                        
+                                        return (
+                                            <option 
+                                                key={p.per_id} 
+                                                value={p.per_id} 
+                                                disabled={yaAsignado}
+                                                className={yaAsignado ? 'text-zinc-600 italic' : ''}
+                                            >
+                                                {p.nombre_completo} {yaAsignado ? '(Ya asignado)' : ''}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                             <div>
@@ -827,7 +862,7 @@ const DetallesViaje = ({ viaje, volver }) => {
                                                             <span className="text-emerald-500 font-bold">${inv.ins_costo_unitario_referencia}</span>
                                                         </td>
                                                         <td className="px-4 py-4 rounded-r-2xl">
-                                                            <div className="flex items-center justify-center gap-4 bg-zinc-950 p-2 rounded-xl border border-zinc-800 group-hover:border-blue-500/50 transition-colors">
+                                                            <div className="flex items-center justify-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 group-hover:border-blue-500/50 transition-colors">
                                                                 <button 
                                                                     onClick={() => {
                                                                         const actualEnBarco = parseFloat(insumosViaje.find(iv => iv.vi_fk_insumo === inv.inv_fk_insumo)?.vi_cantidad || 0);
@@ -847,6 +882,15 @@ const DetallesViaje = ({ viaje, volver }) => {
                                                                     }}
                                                                     className="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-500 rounded-lg transition-all"
                                                                 >+</button>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const actualEnBarco = parseFloat(insumosViaje.find(iv => iv.vi_fk_insumo === inv.inv_fk_insumo)?.vi_cantidad || 0);
+                                                                        const maxPermitido = parseFloat(inv.inv_cantidad_actual) + actualEnBarco;
+                                                                        setCantidadesTemp({ ...cantidadesTemp, [inv.inv_fk_insumo]: maxPermitido });
+                                                                    }}
+                                                                    className="px-2 h-8 flex items-center justify-center bg-zinc-800 hover:bg-blue-500/20 text-zinc-500 hover:text-blue-400 rounded-lg transition-all text-[9px] font-black uppercase"
+                                                                    title="Cargar máximo"
+                                                                >MAX</button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -929,7 +973,7 @@ const DetallesViaje = ({ viaje, volver }) => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {/* Selector compacto estilo Equipamiento */}
-                                                    <div className="flex items-center justify-center gap-4 bg-zinc-950 p-2 rounded-xl border border-zinc-800 group-hover:border-blue-500/50 transition-colors">
+                                                    <div className="flex items-center justify-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800 group-hover:border-blue-500/50 transition-colors">
                                                         <button 
                                                             onClick={() => ajustarCantidadReconciliacion(ins.vi_fk_insumo, -1, parseFloat(ins.vi_cantidad))}
                                                             className="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-all"
@@ -941,6 +985,11 @@ const DetallesViaje = ({ viaje, volver }) => {
                                                             onClick={() => ajustarCantidadReconciliacion(ins.vi_fk_insumo, 1, parseFloat(ins.vi_cantidad))}
                                                             className="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-emerald-600/30 text-zinc-400 hover:text-emerald-500 rounded-lg transition-all"
                                                         >+</button>
+                                                        <button 
+                                                            onClick={() => setCantidadesReconciliacion({ ...cantidadesReconciliacion, [ins.vi_fk_insumo]: parseFloat(ins.vi_cantidad) })}
+                                                            className="px-2 h-8 flex items-center justify-center bg-zinc-800 hover:bg-emerald-500/20 text-zinc-500 hover:text-emerald-400 rounded-lg transition-all text-[9px] font-black uppercase"
+                                                            title="Seleccionar todo"
+                                                        >TODO</button>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 rounded-r-2xl">

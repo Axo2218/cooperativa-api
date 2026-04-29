@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../services/api';
-import { Plus, Edit2, Trash2, X, AlertTriangle, Users, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, Users, CheckCircle, XCircle, ArrowUpDown, Filter } from 'lucide-react';
 
 const PersonalCRUD = () => {
   const [personal, setPersonal] = useState([]);
@@ -11,6 +11,10 @@ const PersonalCRUD = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentRegistro, setCurrentRegistro] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  
+  // Estados para ordenamiento
+  const [sortConfig, setSortConfig] = useState({ key: 'per_id', direction: 'desc' });
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [formData, setFormData] = useState({
     per_nombre: '',
@@ -159,33 +163,115 @@ const PersonalCRUD = () => {
     }
   };
 
-  const handleDelete = async () => {
-    setErrorMsg('');
-    try {
-      await axios.delete(`/personal/${currentRegistro.per_id}`);
-      fetchPersonal();
-      closeDeleteModal();
-    } catch (error) {
-      console.error('Error al eliminar personal:', error);
-      setErrorMsg(error.response?.data?.error || 'Ocurrió un error inesperado al eliminar.');
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
     }
+    setSortConfig({ key, direction });
   };
+
+  const getSortedAndFilteredPersonal = () => {
+    let filtered = [...personal];
+    
+    // Filtro de búsqueda (opcional pero muy útil)
+    if (searchTerm) {
+      const lowSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.per_nombre.toLowerCase().includes(lowSearch) || 
+        p.per_apellidos.toLowerCase().includes(lowSearch) ||
+        (p.rol_nombre && p.rol_nombre.toLowerCase().includes(lowSearch))
+      );
+    }
+
+    return filtered.sort((a, b) => {
+      let valA, valB;
+      
+      switch(sortConfig.key) {
+        case 'nombre':
+          valA = a.per_nombre.toLowerCase();
+          valB = b.per_nombre.toLowerCase();
+          break;
+        case 'apellido':
+          valA = a.per_apellidos.toLowerCase();
+          valB = b.per_apellidos.toLowerCase();
+          break;
+        case 'socio':
+          valA = a.per_es_socio ? 1 : 0;
+          valB = b.per_es_socio ? 1 : 0;
+          break;
+        case 'rol':
+          valA = (a.rol_nombre || '').toLowerCase();
+          valB = (b.rol_nombre || '').toLowerCase();
+          break;
+        case 'estatus':
+          valA = a.per_estatus ? 1 : 0;
+          valB = b.per_estatus ? 1 : 0;
+          break;
+        case 'per_id':
+        default:
+          valA = a.per_id;
+          valB = b.per_id;
+      }
+
+      if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const currentSortedPersonal = getSortedAndFilteredPersonal();
 
   return (
     <div className="p-6 bg-zinc-900 min-h-screen text-zinc-400 font-sans">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex items-center gap-3">
             <Users className="text-white" size={28} />
             <h1 className="text-2xl font-bold text-white">Directorio de Personal y Socios</h1>
           </div>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-          >
-            <Plus size={20} />
-            Registrar Personal
-          </button>
+          
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* Buscador Rápido */}
+            <div className="relative flex-grow md:flex-grow-0">
+              <input 
+                type="text" 
+                placeholder="Buscar por nombre o rol..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full md:w-64 bg-zinc-800 border border-zinc-700 rounded-lg pl-4 pr-10 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+              <Filter className="absolute right-3 top-2.5 text-zinc-500" size={16} />
+            </div>
+
+            {/* Selector de Ordenamiento */}
+            <select 
+              value={`${sortConfig.key}-${sortConfig.direction}`}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split('-');
+                setSortConfig({ key, direction });
+              }}
+              className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+            >
+              <option value="per_id-desc">ID (Más reciente)</option>
+              <option value="per_id-asc">ID (Más antiguo)</option>
+              <option value="nombre-asc">Nombre (A-Z)</option>
+              <option value="nombre-desc">Nombre (Z-A)</option>
+              <option value="apellido-asc">Apellido (A-Z)</option>
+              <option value="apellido-desc">Apellido (Z-A)</option>
+              <option value="rol-asc">Rol (A-Z)</option>
+              <option value="socio-desc">Socios primero</option>
+              <option value="estatus-desc">Activos primero</option>
+            </select>
+
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+            >
+              <Plus size={18} />
+              Registrar Personal
+            </button>
+          </div>
         </div>
 
         <div className="bg-zinc-800/50 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
@@ -193,17 +279,27 @@ const PersonalCRUD = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-zinc-800/80 text-zinc-300 border-b border-zinc-700">
-                  <th className="p-4 font-semibold">ID</th>
-                  <th className="p-4 font-semibold">Nombre Completo</th>
-                  <th className="p-4 font-semibold">Rol</th>
+                  <th className="p-4 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('per_id')}>
+                    <div className="flex items-center gap-1">ID <ArrowUpDown size={12}/></div>
+                  </th>
+                  <th className="p-4 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('nombre')}>
+                    <div className="flex items-center gap-1">Nombre Completo <ArrowUpDown size={12}/></div>
+                  </th>
+                  <th className="p-4 font-semibold cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('rol')}>
+                    <div className="flex items-center gap-1">Rol <ArrowUpDown size={12}/></div>
+                  </th>
                   <th className="p-4 font-semibold">Cooperativa</th>
-                  <th className="p-4 font-semibold text-center">Es Socio</th>
-                  <th className="p-4 font-semibold text-center">Estatus</th>
+                  <th className="p-4 font-semibold text-center cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('socio')}>
+                    <div className="flex items-center justify-center gap-1">Es Socio <ArrowUpDown size={12}/></div>
+                  </th>
+                  <th className="p-4 font-semibold text-center cursor-pointer hover:text-white transition-colors" onClick={() => handleSort('estatus')}>
+                    <div className="flex items-center justify-center gap-1">Estatus <ArrowUpDown size={12}/></div>
+                  </th>
                   <th className="p-4 font-semibold text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {personal.map((reg) => (
+                {currentSortedPersonal.map((reg) => (
                   <tr key={reg.per_id} className="hover:bg-zinc-800/50 transition-colors">
                     <td className="p-4 text-zinc-500">#{reg.per_id}</td>
                     <td className="p-4 text-white font-medium">

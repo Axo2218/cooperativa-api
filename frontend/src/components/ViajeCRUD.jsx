@@ -14,6 +14,7 @@ const ViajeCRUD = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [tripulacionGlobal, setTripulacionGlobal] = useState([]);
   const [selectedCoop, setSelectedCoop] = useState(null);
+  const [cooperativas, setCooperativas] = useState([]);
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
@@ -44,7 +45,17 @@ const ViajeCRUD = () => {
     fetchPersonal();
     fetchZonas();
     fetchTripulacionGlobal();
+    fetchCooperativas();
   }, []);
+
+  const fetchCooperativas = async () => {
+    try {
+      const { data } = await axios.get('/cooperativas').catch(() => ({ data: [] }));
+      setCooperativas(data);
+    } catch (error) {
+      console.error('Error al cargar cooperativas:', error);
+    }
+  };
 
   const fetchTripulacionGlobal = async () => {
     try {
@@ -97,20 +108,28 @@ const ViajeCRUD = () => {
     
     if (name === 'via_fk_embarcacion') {
       const barco = embarcaciones.find(emb => emb.emb_id.toString() === value.toString());
-      const newCoop = barco ? barco.emb_fk_cooperativa : null;
-      setSelectedCoop(newCoop);
-      
-      // Si cambia la cooperativa, reseteamos el capitán para evitar inconsistencias
-      if (formData.via_fk_capitan) {
-        const capActual = personal.find(p => p.per_id.toString() === formData.via_fk_capitan.toString());
-        if (capActual && capActual.per_fk_cooperativa !== newCoop) {
-          setFormData({ ...formData, [name]: value, via_fk_capitan: '' });
-          return;
-        }
+      // Si por alguna razón se cambia de barco pero sigue siendo la misma coop, lo dejamos.
+      // Pero si se selecciona un barco vacío, reseteamos el capitán.
+      if (!value) {
+        setFormData({ ...formData, [name]: value, via_fk_capitan: '' });
+        return;
       }
     }
     
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleCoopChange = (e) => {
+    const value = e.target.value;
+    const newCoop = value ? parseInt(value) : null;
+    setSelectedCoop(newCoop);
+    
+    // Al cambiar la cooperativa, reseteamos barco y capitán
+    setFormData({
+      ...formData,
+      via_fk_embarcacion: '',
+      via_fk_capitan: ''
+    });
   };
 
   const openModal = (registro = null) => {
@@ -334,23 +353,41 @@ const ViajeCRUD = () => {
                   <h3 className="text-lg font-medium text-white mb-2 border-b border-zinc-800 pb-2">Información Operativa</h3>
                   
                   <div className="space-y-1">
-                    <label className="text-sm font-medium text-zinc-300">Embarcación *</label>
+                    <label className="text-sm font-medium text-zinc-300">Cooperativa Propietaria *</label>
+                    <select
+                      value={selectedCoop || ''}
+                      onChange={handleCoopChange}
+                      required
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                    >
+                      <option value="">Seleccione cooperativa...</option>
+                      {cooperativas.map(c => (
+                        <option key={c.coop_id} value={c.coop_id}>{c.coop_nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-zinc-300">Embarcación * {selectedCoop && <span className="text-[10px] text-emerald-500 font-black ml-2 opacity-70">DISPONIBLES</span>}</label>
                     <select
                       name="via_fk_embarcacion"
                       value={formData.via_fk_embarcacion}
                       onChange={handleInputChange}
                       required
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                      disabled={!selectedCoop}
+                      className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors ${!selectedCoop ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <option value="">Seleccione embarcación...</option>
-                      {embarcaciones.map(e => {
-                        const isOcupado = barcosOcupados.has(e.emb_id) && (!currentRegistro || currentRegistro.via_fk_embarcacion !== e.emb_id);
-                        return (
-                          <option key={e.emb_id} value={e.emb_id} disabled={isOcupado}>
-                            {e.emb_nombre} ({e.emb_matricula}) {isOcupado ? ' - EN RUTA' : ''}
-                          </option>
-                        );
-                      })}
+                      <option value="">{selectedCoop ? 'Seleccione embarcación...' : 'Primero seleccione cooperativa'}</option>
+                      {embarcaciones
+                        .filter(e => !selectedCoop || e.emb_fk_cooperativa === selectedCoop)
+                        .map(e => {
+                          const isOcupado = barcosOcupados.has(e.emb_id) && (!currentRegistro || currentRegistro.via_fk_embarcacion !== e.emb_id);
+                          return (
+                            <option key={e.emb_id} value={e.emb_id} disabled={isOcupado}>
+                              {e.emb_nombre} ({e.emb_matricula}) {isOcupado ? ' - EN RUTA' : ''}
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
 
@@ -364,7 +401,7 @@ const ViajeCRUD = () => {
                       disabled={!selectedCoop}
                       className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors ${!selectedCoop ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <option value="">{selectedCoop ? 'Seleccione capitán...' : 'Primero seleccione embarcación'}</option>
+                      <option value="">{selectedCoop ? 'Seleccione capitán...' : 'Primero seleccione cooperativa'}</option>
                       {personal
                         .filter(p => !selectedCoop || p.per_fk_cooperativa === selectedCoop)
                         .map(p => {

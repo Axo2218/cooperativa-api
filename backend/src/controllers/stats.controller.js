@@ -40,8 +40,46 @@ const getDashboardStats = async (req, res) => {
             LIMIT 12
         `);
 
-        // 6. Personal por Estatus
-        const personalStats = await pool.query('SELECT per_estatus, COUNT(*) FROM personal GROUP BY per_estatus');
+        // 6. Personal por Estatus (Fixed boolean comparison)
+        const personalStats = await pool.query(`
+            SELECT 
+                CASE WHEN per_estatus = true THEN 'Activo' ELSE 'Inactivo' END as estatus, 
+                COUNT(*)::int as count 
+            FROM personal 
+            GROUP BY per_estatus
+        `);
+
+        // 7. Ventas por Cooperativa (Leaderboard)
+        const coopSales = await pool.query(`
+            SELECT c.coop_nombre, COALESCE(SUM(v.ven_total), 0) as total
+            FROM cooperativa c
+            LEFT JOIN venta v ON v.ven_fk_cooperativa = c.coop_id
+            GROUP BY c.coop_nombre
+            ORDER BY total DESC
+        `);
+
+        // 8. Fuerza Laboral por Cooperativa (Fixed boolean comparison)
+        const workforceStats = await pool.query(`
+            SELECT 
+                c.coop_nombre,
+                COUNT(p.per_id) FILTER (WHERE p.per_estatus = true)::int as activos,
+                COUNT(p.per_id) FILTER (WHERE p.per_estatus = false)::int as inactivos
+            FROM cooperativa c
+            LEFT JOIN personal p ON c.coop_id = p.per_fk_cooperativa
+            GROUP BY c.coop_nombre
+            ORDER BY c.coop_nombre ASC
+        `);
+
+        // 9. Producción por Cooperativa (Leaderboard de Capturas)
+        const coopProduction = await pool.query(`
+            SELECT c.coop_nombre, COALESCE(SUM(d.det_cap_kilogramos), 0)::float as total
+            FROM cooperativa c
+            LEFT JOIN embarcacion e ON e.emb_fk_cooperativa = c.coop_id
+            LEFT JOIN viaje v ON v.via_fk_embarcacion = e.emb_id
+            LEFT JOIN viaje_detalle_captura d ON v.via_id = d.det_cap_fk_viaje
+            GROUP BY c.coop_nombre
+            ORDER BY total DESC
+        `);
 
         res.json({
             // Resumen (KPIs principales)
@@ -56,7 +94,10 @@ const getDashboardStats = async (req, res) => {
             activeTrips: activeTrips.rows,
             productionHistory: prodHistory.rows,
             revenueHistory: revHistory.rows,
-            personalStats: personalStats.rows
+            personalStats: personalStats.rows,
+            coopSales: coopSales.rows,
+            workforceStats: workforceStats.rows,
+            coopProduction: coopProduction.rows
         });
     } catch (error) {
         console.error('Error al obtener estadísticas:', error);
