@@ -168,55 +168,41 @@ const PescaHistoricoCRUD = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-zinc-800/80 text-zinc-300 border-b border-zinc-700">
-                  <th className="p-4 font-semibold">ID</th>
+                  <th className="p-4 font-semibold">Viaje</th>
                   <th className="p-4 font-semibold">Embarcación</th>
-                  <th className="p-4 font-semibold">Fechas (Salida - Regreso)</th>
-                  <th className="p-4 font-semibold">Zona</th>
-                  <th className="p-4 font-semibold">Especie Principal</th>
-                  <th className="p-4 font-semibold text-right">Captura (Kg)</th>
-                  <th className="p-4 font-semibold text-right">Ingreso Est.</th>
-                  <th className="p-4 font-semibold text-center">Acciones</th>
+                  <th className="p-4 font-semibold">Fechas</th>
+                  <th className="p-4 font-semibold">Capitán / Tripulación</th>
+                  <th className="p-4 font-semibold">Detalle de Captura</th>
+                  <th className="p-4 font-semibold text-right">Total (Kg)</th>
+                  <th className="p-4 font-semibold text-right">Ingresos</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {historial.map((reg) => (
-                  <tr key={reg.pes_id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="p-4 text-zinc-500">#{reg.pes_id}</td>
-                    <td className="p-4 text-white font-medium">
-                      {reg.emb_nombre}
-                      <span className="block text-xs text-zinc-500 font-mono mt-1">{reg.emb_matricula}</span>
-                    </td>
-                    <td className="p-4 text-sm">
-                      <div className="text-zinc-300">{new Date(reg.pes_fecha_salida).toLocaleDateString()}</div>
-                      <div className={`mt-1 ${reg.pes_fecha_regreso ? 'text-zinc-500' : 'text-amber-500'}`}>
-                        {reg.pes_fecha_regreso ? new Date(reg.pes_fecha_regreso).toLocaleDateString() : 'En altamar'}
-                      </div>
-                    </td>
-                    <td className="p-4">{reg.pes_zona_pesca || '-'}</td>
-                    <td className="p-4">{reg.esp_nombre_comun || <span className="text-zinc-600 italic">No especificada</span>}</td>
-                    <td className="p-4 text-right font-mono text-emerald-400">
-                      {reg.pes_kilos_capturados} <span className="text-xs text-zinc-500">kg</span>
-                    </td>
-                    <td className="p-4 text-right font-mono text-white">
-                      {formatCurrency(reg.pes_ingreso_estimado)}
-                    </td>
+                  <tr key={reg.via_id} className="hover:bg-zinc-800/50 transition-colors group">
+                    <td className="p-4 text-zinc-500 font-mono text-xs">#{reg.via_id}</td>
                     <td className="p-4">
-                      <div className="flex items-center justify-center gap-3">
-                        <button
-                          onClick={() => openModal(reg)}
-                          className="text-zinc-400 hover:text-emerald-500 transition-colors p-1"
-                          title="Editar"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => confirmDelete(reg)}
-                          className="text-zinc-400 hover:text-red-500 transition-colors p-1"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                      <div className="text-white font-bold">{reg.emb_nombre}</div>
+                      <div className="text-[10px] text-zinc-500 font-mono uppercase">{reg.emb_matricula}</div>
+                    </td>
+                    <td className="p-4 text-xs">
+                      <div className="text-zinc-300">Salida: {new Date(reg.via_fecha_salida).toLocaleDateString()}</div>
+                      <div className="text-emerald-500 font-medium">Llegada: {new Date(reg.via_fecha_llegada).toLocaleDateString()}</div>
+                    </td>
+                    <td className="p-4 max-w-[200px]">
+                      <div className="text-emerald-400 font-bold text-sm">{reg.capitan_nombre}</div>
+                      <div className="text-[10px] text-zinc-500 line-clamp-1 italic">{reg.tripulacion || 'Sin tripulación extra'}</div>
+                    </td>
+                    <td className="p-4 max-w-[250px]">
+                      <div className="text-xs text-zinc-300 leading-relaxed">
+                        {reg.detalle_pesca || <span className="text-zinc-600 italic">Sin capturas registradas</span>}
                       </div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="text-white font-black">{Number(reg.via_total_kg).toLocaleString()} <span className="text-[10px] text-zinc-500">KG</span></div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="text-emerald-500 font-black text-lg">{formatCurrency(reg.via_total_ingresos)}</div>
                     </td>
                   </tr>
                 ))}

@@ -13,6 +13,7 @@ const ViajeCRUD = () => {
   const [currentRegistro, setCurrentRegistro] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [tripulacionGlobal, setTripulacionGlobal] = useState([]);
+  const [selectedCoop, setSelectedCoop] = useState(null);
 
   const formatDateForInput = (dateString) => {
     if (!dateString) return '';
@@ -93,6 +94,22 @@ const ViajeCRUD = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    if (name === 'via_fk_embarcacion') {
+      const barco = embarcaciones.find(emb => emb.emb_id.toString() === value.toString());
+      const newCoop = barco ? barco.emb_fk_cooperativa : null;
+      setSelectedCoop(newCoop);
+      
+      // Si cambia la cooperativa, reseteamos el capitán para evitar inconsistencias
+      if (formData.via_fk_capitan) {
+        const capActual = personal.find(p => p.per_id.toString() === formData.via_fk_capitan.toString());
+        if (capActual && capActual.per_fk_cooperativa !== newCoop) {
+          setFormData({ ...formData, [name]: value, via_fk_capitan: '' });
+          return;
+        }
+      }
+    }
+    
     setFormData({ ...formData, [name]: value });
   };
 
@@ -111,8 +128,12 @@ const ViajeCRUD = () => {
         via_presupuesto_estimado: registro.via_presupuesto_estimado || 0,
         via_fk_zona: registro.via_fk_zona || ''
       });
+      // Detectar cooperativa al editar
+      const barco = embarcaciones.find(emb => emb.emb_id === registro.via_fk_embarcacion);
+      setSelectedCoop(barco ? barco.emb_fk_cooperativa : null);
     } else {
       setCurrentRegistro(null);
+      setSelectedCoop(null);
       setFormData({
         via_fecha_salida: formatDateForInput(new Date()),
         via_fecha_llegada: '',
@@ -333,24 +354,27 @@ const ViajeCRUD = () => {
                     </select>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-zinc-300">Capitán Designado *</label>
+                    <div className="space-y-1">
+                    <label className="text-sm font-medium text-zinc-300">Capitán Designado * {selectedCoop && <span className="text-[10px] text-emerald-500 font-black ml-2 opacity-70">FILTRADO POR COOPERATIVA</span>}</label>
                     <select
                       name="via_fk_capitan"
                       value={formData.via_fk_capitan}
                       onChange={handleInputChange}
                       required
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                      disabled={!selectedCoop}
+                      className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors ${!selectedCoop ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <option value="">Seleccione capitán...</option>
-                      {personal.map(p => {
-                        const isOcupado = personalOcupadoTotal.has(p.per_id) && (!currentRegistro || currentRegistro.via_fk_capitan !== p.per_id);
-                        return (
-                          <option key={p.per_id} value={p.per_id} disabled={isOcupado}>
-                            {p.per_nombre} {p.per_apellidos} {isOcupado ? ' - OCUPADO' : ''}
-                          </option>
-                        );
-                      })}
+                      <option value="">{selectedCoop ? 'Seleccione capitán...' : 'Primero seleccione embarcación'}</option>
+                      {personal
+                        .filter(p => !selectedCoop || p.per_fk_cooperativa === selectedCoop)
+                        .map(p => {
+                          const isOcupado = personalOcupadoTotal.has(p.per_id) && (!currentRegistro || currentRegistro.via_fk_capitan !== p.per_id);
+                          return (
+                            <option key={p.per_id} value={p.per_id} disabled={isOcupado}>
+                              {p.per_nombre} {p.per_apellidos} {isOcupado ? ' - OCUPADO' : ''}
+                            </option>
+                          );
+                        })}
                     </select>
                   </div>
 
@@ -417,13 +441,14 @@ const ViajeCRUD = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-sm font-medium text-zinc-300">Fecha y Hora Real de Llegada</label>
+                    <label className="text-sm font-medium text-zinc-500">Fecha y Hora Real de Llegada (Se llena al arribo)</label>
                     <input
                       type="datetime-local"
                       name="via_fecha_llegada"
                       value={formData.via_fecha_llegada}
                       onChange={handleInputChange}
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                      disabled
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-600 cursor-not-allowed focus:outline-none transition-colors opacity-60"
                     />
                   </div>
 

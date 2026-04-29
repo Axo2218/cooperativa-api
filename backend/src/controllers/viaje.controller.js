@@ -3,6 +3,9 @@ const pool = require('../config/db');
 // OBTENER TODOS LOS VIAJES (Full data para Dashboard y CRUD)
 const obtenerViajes = async (req, res) => {
     try {
+        const { archivados } = req.query;
+        const isArchivado = archivados === 'true';
+
         const query = `
         SELECT 
             v.*, 
@@ -15,9 +18,10 @@ const obtenerViajes = async (req, res) => {
         LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
         LEFT JOIN personal p ON v.via_fk_capitan = p.per_id
         LEFT JOIN zona_pesca z ON v.via_fk_zona = z.zona_id
+        WHERE v.via_archivado = $1
         ORDER BY v.via_id DESC
         `;
-        const respuesta = await pool.query(query);
+        const respuesta = await pool.query(query, [isArchivado]);
         res.status(200).json(respuesta.rows);
     } catch (error) {
         console.error(error);
@@ -33,10 +37,16 @@ const getViajeById = async (req, res) => {
             SELECT 
                 v.*, 
                 e.emb_nombre AS barco, 
+                e.emb_categoria,
+                e.emb_capacidad_carga,
+                e.emb_fk_cooperativa,
+                c.coop_fk_instalacion AS id_bodega,
                 p.per_nombre || ' ' || p.per_apellidos AS capitan,
-                z.zona_nombre
+                z.zona_nombre,
+                z.zona_cuadrante
             FROM viaje v
             LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
+            LEFT JOIN cooperativa c ON e.emb_fk_cooperativa = c.coop_id
             LEFT JOIN personal p ON v.via_fk_capitan = p.per_id
             LEFT JOIN zona_pesca z ON v.via_fk_zona = z.zona_id
             WHERE via_id = $1
@@ -111,20 +121,76 @@ const updateViaje = async (req, res) => {
 
 // ACTUALIZAR ESTATUS (El motor de tu "Stepper" tipo Mercado Libre)
 const actualizarEstatusViaje = async (req, res) => {
+    const client = await pool.connect();
     try {
         const { id } = req.params;
-        const { via_estatus } = req.body; 
+        const { via_estatus, via_fecha_llegada, via_observaciones } = req.body; 
 
-        const actualizar = await pool.query(
-            "UPDATE viaje SET via_estatus = $1 WHERE via_id = $2 RETURNING *",
-            [via_estatus, id]
-        );
+        await client.query('BEGIN');
 
-        if (actualizar.rows.length === 0) return res.status(404).json({ mensaje: "Viaje no encontrado" });
-        res.status(200).json({ mensaje: `Estatus actualizado a: ${via_estatus}`, viaje: actualizar.rows[0] });
+        const query = `
+            UPDATE viaje 
+            SET via_estatus = $1, 
+                via_fecha_llegada = COALESCE($2, via_fecha_llegada), 
+                via_observaciones = COALESCE($3, via_observaciones) 
+            WHERE via_id = $4 RETURNING *
+        `;
+
+        const actualizar = await client.query(query, [via_estatus, via_fecha_llegada || null, via_observaciones || null, id]);
+
+        if (actualizar.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ mensaje: "Viaje no encontrado" });
+        }
+
+        const viajeActualizado = actualizar.rows[0];
+
+        // LÓGICA DE INVENTARIO PERSISTENTE:
+        // Si el viaje pasa a 'En Preparación', cargamos automáticamente lo que el barco ya tiene en su bodega persistente.
+        if (via_estatus === 'En Preparación') {
+            await client.query(`
+                INSERT INTO viaje_insumo (vi_fk_viaje, vi_fk_insumo, vi_cantidad)
+                SELECT $1, ie_fk_insumo, ie_cantidad
+                FROM inventario_embarcacion
+                WHERE ie_fk_embarcacion = $2
+                ON CONFLICT DO NOTHING
+            `, [id, viajeActualizado.via_fk_embarcacion]);
+        }
+
+        await client.query('COMMIT');
+        res.status(200).json({ mensaje: `Estatus actualizado a: ${via_estatus}`, viaje: viajeActualizado });
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error(error);
         res.status(500).json({ error: 'Error al cambiar de estatus' });
+    } finally {
+        client.release();
+    }
+};
+
+// ARCHIVAR UN VIAJE (Ocultar del dashboard)
+const archivarViaje = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query("UPDATE viaje SET via_archivado = true WHERE via_id = $1 RETURNING *", [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Viaje no encontrado' });
+        res.json({ mensaje: 'Viaje archivado correctamente', viaje: result.rows[0] });
+    } catch (error) {
+        console.error('Error al archivar viaje:', error);
+        res.status(500).json({ error: 'Error al archivar el viaje' });
+    }
+};
+
+// DESARCHIVAR UN VIAJE (Regresar al dashboard)
+const desarchivarViaje = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query("UPDATE viaje SET via_archivado = false WHERE via_id = $1 RETURNING *", [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Viaje no encontrado' });
+        res.json({ mensaje: 'Viaje recuperado correctamente', viaje: result.rows[0] });
+    } catch (error) {
+        console.error('Error al desarchivar viaje:', error);
+        res.status(500).json({ error: 'Error al desarchivar el viaje' });
     }
 };
 
@@ -145,11 +211,87 @@ const eliminarViaje = async (req, res) => {
     }
 };
 
+// FINALIZAR VIAJE (Cierre de bitácora y liquidación)
+const finalizarViaje = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { id } = req.params;
+        await client.query('BEGIN');
+        
+        // 1. Obtener datos del viaje y la cooperativa
+        const viajeData = await client.query(`
+            SELECT v.*, c.coop_porcentaje_retencion 
+            FROM viaje v
+            LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
+            LEFT JOIN cooperativa c ON e.emb_fk_cooperativa = c.coop_id
+            WHERE v.via_id = $1
+        `, [id]);
+
+        if (viajeData.rows.length === 0) throw new Error('Viaje no encontrado');
+        const viaje = viajeData.rows[0];
+        const pctCoop = parseFloat(viaje.coop_porcentaje_retencion || 30) / 100;
+
+        // 2. Calcular totales de captura
+        const capturas = await client.query(`
+            SELECT SUM(det_cap_kilogramos) as total_kg, 
+                   SUM(det_cap_kilogramos * det_cap_precio_pactado) as total_ingresos 
+            FROM viaje_detalle_captura 
+            WHERE det_cap_fk_viaje = $1
+        `, [id]);
+        
+        const total_kg = parseFloat(capturas.rows[0].total_kg || 0);
+        const total_ingresos = parseFloat(capturas.rows[0].total_ingresos || 0);
+        const presupuesto = parseFloat(viaje.via_presupuesto_estimado || 0);
+
+        // 3. Cálculo de Ganancias y Reparto
+        const ganancia_neta = total_ingresos - presupuesto;
+        let reparto_coop = 0;
+        let reparto_cap = 0;
+        let reparto_trip = 0;
+
+        if (ganancia_neta > 0) {
+            reparto_coop = ganancia_neta * pctCoop;
+            const remanente = ganancia_neta - reparto_coop;
+            reparto_cap = remanente * 0.30; // 30% del remanente al capitán
+            reparto_trip = remanente * 0.70; // 70% del remanente a la tripulación
+        }
+        
+        // 4. Desembarcar tripulación
+        await client.query("UPDATE viaje_personal SET via_per_enrolado = FALSE WHERE via_per_fk_viaje = $1", [id]);
+
+        // 5. Actualizar el viaje con los resultados finales
+        const result = await client.query(`
+            UPDATE viaje 
+            SET via_estatus = 'Completado', 
+                via_fecha_llegada = CURRENT_TIMESTAMP,
+                via_total_kg = $1,
+                via_total_ingresos = $2,
+                via_ganancia_neta = $3,
+                via_reparto_cooperativa = $4,
+                via_reparto_capitan = $5,
+                via_reparto_tripulacion = $6
+            WHERE via_id = $7 RETURNING *
+        `, [total_kg, total_ingresos, ganancia_neta, reparto_coop, reparto_cap, reparto_trip, id]);
+        
+        await client.query('COMMIT');
+        res.json({ mensaje: 'Viaje finalizado y liquidado correctamente', viaje: result.rows[0] });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error al finalizar viaje:', error);
+        res.status(500).json({ error: 'Error al procesar el cierre del viaje: ' + error.message });
+    } finally {
+        client.release();
+    }
+};
+
 module.exports = {
     obtenerViajes,
     getViajeById,
     crearViaje,
     updateViaje,
     actualizarEstatusViaje,
-    eliminarViaje
+    eliminarViaje,
+    archivarViaje,
+    desarchivarViaje,
+    finalizarViaje
 };

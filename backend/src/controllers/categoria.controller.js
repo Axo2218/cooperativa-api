@@ -3,9 +3,10 @@ const pool = require('../config/db');
 // OBTENER TODAS (GET)
 const obtenerCategorias = async (req, res) => {
     try {
-        const respuesta = await pool.query("SELECT * FROM categoria_especie ORDER BY cat_esp_id ASC");
+        const respuesta = await pool.query("SELECT cat_ins_id AS cat_id, cat_ins_nombre AS cat_nombre, cat_ins_descripcion AS cat_descripcion FROM categoria_insumo ORDER BY cat_ins_id ASC");
         res.status(200).json(respuesta.rows);
     } catch (error) {
+        console.error('Error al obtener categorías de insumo:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 };
@@ -14,7 +15,7 @@ const obtenerCategorias = async (req, res) => {
 const obtenerCategoria = async (req, res) => {
     try {
         const { id } = req.params;
-        const respuesta = await pool.query("SELECT * FROM categoria_especie WHERE cat_esp_id = $1", [id]);
+        const respuesta = await pool.query("SELECT cat_ins_id AS cat_id, cat_ins_nombre AS cat_nombre, cat_ins_descripcion AS cat_descripcion FROM categoria_insumo WHERE cat_ins_id = $1", [id]);
         if (respuesta.rows.length === 0) return res.status(404).json({ mensaje: "Categoría no encontrada" });
         res.status(200).json(respuesta.rows[0]);
     } catch (error) {
@@ -25,10 +26,10 @@ const obtenerCategoria = async (req, res) => {
 // CREAR (POST)
 const crearCategoria = async (req, res) => {
     try {
-        const { cat_esp_nombre } = req.body;
+        const { cat_nombre, cat_descripcion } = req.body;
         const nuevaCategoria = await pool.query(
-            "INSERT INTO categoria_especie (cat_esp_nombre) VALUES ($1) RETURNING *",
-            [cat_esp_nombre]
+            "INSERT INTO categoria_insumo (cat_ins_nombre, cat_ins_descripcion) VALUES ($1, $2) RETURNING cat_ins_id AS cat_id, cat_ins_nombre AS cat_nombre, cat_ins_descripcion AS cat_descripcion",
+            [cat_nombre, cat_descripcion]
         );
         res.status(201).json(nuevaCategoria.rows[0]);
     } catch (error) {
@@ -40,10 +41,10 @@ const crearCategoria = async (req, res) => {
 const actualizarCategoria = async (req, res) => {
     try {
         const { id } = req.params;
-        const { cat_esp_nombre } = req.body;
+        const { cat_nombre, cat_descripcion } = req.body;
         const actualizar = await pool.query(
-            "UPDATE categoria_especie SET cat_esp_nombre = $1 WHERE cat_esp_id = $2 RETURNING *",
-            [cat_esp_nombre, id]
+            "UPDATE categoria_insumo SET cat_ins_nombre = $1, cat_ins_descripcion = $2 WHERE cat_ins_id = $3 RETURNING cat_ins_id AS cat_id, cat_ins_nombre AS cat_nombre, cat_ins_descripcion AS cat_descripcion",
+            [cat_nombre, cat_descripcion, id]
         );
         if (actualizar.rows.length === 0) return res.status(404).json({ mensaje: "Categoría no encontrada" });
         res.status(200).json(actualizar.rows[0]);
@@ -56,9 +57,9 @@ const actualizarCategoria = async (req, res) => {
 const eliminarCategoria = async (req, res) => {
     try {
         const { id } = req.params;
-        const eliminar = await pool.query("DELETE FROM categoria_especie WHERE cat_esp_id = $1 RETURNING *", [id]);
+        const eliminar = await pool.query("DELETE FROM categoria_insumo WHERE cat_ins_id = $1 RETURNING *", [id]);
         if (eliminar.rows.length === 0) return res.status(404).json({ mensaje: "Categoría no encontrada" });
-        res.status(200).json({ mensaje: "Categoría eliminada con éxito, Capitán" });
+        res.status(200).json({ mensaje: "Categoría eliminada con éxito" });
     } catch (error) {
         res.status(500).json({ error: "Error al eliminar. Verifica que no esté en uso." });
     }

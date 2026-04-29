@@ -1,9 +1,8 @@
 import React from 'react';
 // Agregamos XCircle para el ícono de cancelado
-import { Ship, Anchor, MapPin, CheckCircle, XCircle } from 'lucide-react';
+import { Ship, Anchor, MapPin, CheckCircle, XCircle, Archive, RefreshCcw } from 'lucide-react';
 
-// Antes: const ViajeCard = ({ viaje }) => {
-const ViajeCard = ({ viaje, onVerDetalles }) => {
+const ViajeCard = ({ viaje, onVerDetalles, onArchivar, onDesarchivar }) => {
     const pasos = [
         { nombre: 'Preparación', icono: <Anchor size={16} /> },
         { nombre: 'En Curso', icono: <Ship size={16} /> },
@@ -11,23 +10,35 @@ const ViajeCard = ({ viaje, onVerDetalles }) => {
         { nombre: 'Completado', icono: <CheckCircle size={16} /> }
     ];
 
-    //Detectamos si el viaje fue abortado
     const isCancelado = viaje.via_estatus === 'Cancelado';
+    const isArchivable = (isCancelado || viaje.via_estatus === 'Completado') && !viaje.via_archivado;
+    const isArchived = viaje.via_archivado;
 
     const pasoActual = pasos.findIndex(p => p.nombre.includes(viaje.via_estatus.replace('En ', '')));
     const indexPaso = pasoActual === -1 ? 0 : pasoActual;
 
     return (
-        // Si está cancelado, le ponemos un borde rojo muy sutil a toda la tarjeta
-        <div className={`bg-zinc-900 rounded-xl border ${isCancelado ? 'border-red-900/50' : 'border-zinc-800'} overflow-hidden hover:border-zinc-700 transition-colors flex flex-col h-full`}>
+        <div className={`bg-zinc-900 rounded-xl border ${isCancelado ? 'border-red-900/50' : 'border-zinc-800'} overflow-hidden hover:border-zinc-700 transition-colors flex flex-col h-full group/card relative ${isArchived ? 'opacity-75' : ''}`}>
+            
+            {(isArchivable || isArchived) && (
+                <button 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        isArchived ? onDesarchivar() : onArchivar();
+                    }}
+                    className="absolute top-4 right-24 p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-all opacity-0 group-hover/card:opacity-100 z-20"
+                    title={isArchived ? "Restaurar al Mando" : "Archivar Viaje"}
+                >
+                    {isArchived ? <RefreshCcw size={16} /> : <Archive size={16} />}
+                </button>
+            )}
 
             <div className="p-6 flex-grow">
                 <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="pr-12">
                         <h3 className={`text-xl font-bold mb-1 ${isCancelado ? 'text-zinc-500 line-through' : 'text-white'}`}>{viaje.barco}</h3>
                         <p className="text-sm text-zinc-400">Cap. {viaje.capitan}</p>
                     </div>
-                    {/* Badge dinámico: Rojo si es cancelado, Esmeralda si está activo */}
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${isCancelado ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
                         {viaje.via_estatus}
                     </span>
@@ -76,7 +87,7 @@ const ViajeCard = ({ viaje, onVerDetalles }) => {
                 {/* Antes no tenía el onClick */}
                 <button
                     onClick={onVerDetalles}
-                    className="w-full text-white font-bold py-3 px-4 rounded-lg transition-all flex justify-center items-center gap-2 text-sm bg-emerald-600 hover:bg-emerald-500"
+                    className="w-full text-white font-black py-3 px-4 rounded-lg transition-all flex justify-center items-center gap-2 text-sm bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/10"
                 >
                     Ver Detalles
                     {/* ... (tu svg de flechita sigue aquí) */}

@@ -3,13 +3,22 @@ const pool = require('../config/db');
 // Obtener todo el personal
 const getPersonal = async (req, res) => {
     try {
-        const result = await pool.query(`
+        const { cooperativa } = req.query;
+        let query = `
             SELECT p.*, r.rol_nombre, c.coop_nombre
             FROM personal p
             LEFT JOIN rol r ON p.per_fk_rol = r.rol_id
             LEFT JOIN cooperativa c ON p.per_fk_cooperativa = c.coop_id
-            ORDER BY p.per_id DESC
-        `);
+        `;
+        let params = [];
+
+        if (cooperativa) {
+            query += ` WHERE p.per_fk_cooperativa = $1 `;
+            params.push(cooperativa);
+        }
+
+        query += ` ORDER BY p.per_id DESC `;
+        const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
         console.error('Error al obtener personal:', error);

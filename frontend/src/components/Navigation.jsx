@@ -69,19 +69,19 @@ const Navigation = () => {
   return (
     <nav className="border-b border-zinc-800 bg-slate-950 py-4 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto w-full px-6 flex justify-between items-center">
-        
+
         {/* BRANDING */}
         <Link to="/dashboard" className="text-xl font-bold tracking-tighter flex items-center hover:opacity-80 transition-opacity">
-          Coop<span className="text-emerald-500">Pesca</span>
+          Coo<span className="text-emerald-500">Pesca</span>
         </Link>
 
         {/* CENTER MENUS */}
         <div className="flex gap-2 text-sm font-medium">
-          
+
           {/* Dashboard Link (Direct) */}
-          <Link 
-              to="/dashboard" 
-              className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2
+          <Link
+            to="/dashboard"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2
                 ${location.pathname === '/dashboard' || location.pathname.startsWith('/viajes/') ? 'text-emerald-500 border-b-2 border-emerald-500 rounded-b-none' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}
               `}
           >
@@ -91,16 +91,16 @@ const Navigation = () => {
           {/* Dropdowns */}
           {navGroups.map((group, idx) => (
             <div key={idx} className="relative group">
-              <button 
-                className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 
+              <button
+                className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2 
                   ${group.routes.some(r => location.pathname === r.path) ? 'text-emerald-500 border-b-2 border-emerald-500 rounded-b-none' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}
                 `}
               >
                 {group.icon}
                 {group.title}
-                <ChevronDown size={14} className="opacity-50 group-hover:rotate-180 transition-transform duration-200"/>
+                <ChevronDown size={14} className="opacity-50 group-hover:rotate-180 transition-transform duration-200" />
               </button>
-              
+
               {/* Dropdown Menu Container */}
               <div className="absolute top-full left-0 mt-1 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform origin-top-left shadow-2xl bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden z-50 py-2">
                 {group.routes.map((route, rIdx) => (
@@ -117,11 +117,11 @@ const Navigation = () => {
               </div>
             </div>
           ))}
-          
+
           {/* Alertas */}
-          <Link 
-              to="/alertas" 
-              className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2
+          <Link
+            to="/alertas"
+            className={`px-3 py-2 rounded-xl transition-colors flex items-center gap-2
                 ${location.pathname === '/alertas' ? 'text-emerald-500 border-b-2 border-emerald-500 rounded-b-none' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}
               `}
           >

@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, X, AlertTriangle, Ship } from 'lucide-react';
 const EmbarcacionCRUD = () => {
   const [embarcaciones, setEmbarcaciones] = useState([]);
   const [cooperativas, setCooperativas] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -16,10 +17,11 @@ const EmbarcacionCRUD = () => {
     emb_matricula: '',
     emb_eslora: '',
     emb_manga: '',
-    emb_capacidad_carga_kg: '',
+    emb_capacidad_carga: '',
     emb_tipo_motor: '',
     emb_estado: 'Activa',
-    emb_fk_cooperativa: ''
+    emb_fk_cooperativa: '',
+    emb_fk_categoria: ''
   });
 
   useEffect(() => {
@@ -38,15 +40,32 @@ const EmbarcacionCRUD = () => {
 
   const fetchCooperativas = async () => {
     try {
-      const { data } = await axios.get('/cooperativas');
-      setCooperativas(data);
+      const { data } = await axios.get('/catalogo/catalogos');
+      setCooperativas(data.cooperativas || []);
+      setCategorias(data.categorias || []);
     } catch (error) {
-      console.error('Error al cargar cooperativas:', error);
+      console.error('Error al cargar catálogos:', error);
     }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    if (name === 'emb_fk_categoria') {
+      const selectedCat = categorias.find(c => c.cat_id === parseInt(value));
+      if (selectedCat) {
+        setFormData({ 
+          ...formData, 
+          [name]: value,
+          emb_capacidad_carga: selectedCat.cat_capacidad_sugerida || '',
+          // Valores por defecto sugeridos según categoría para facilitar el llenado
+          emb_eslora: value === '1' ? '7.5' : value === '3' ? '25.0' : formData.emb_eslora,
+          emb_manga: value === '1' ? '2.5' : value === '3' ? '6.0' : formData.emb_manga
+        });
+        return;
+      }
+    }
+    
     setFormData({ ...formData, [name]: value });
   };
 
@@ -59,10 +78,11 @@ const EmbarcacionCRUD = () => {
         emb_matricula: embarcacion.emb_matricula || '',
         emb_eslora: embarcacion.emb_eslora || '',
         emb_manga: embarcacion.emb_manga || '',
-        emb_capacidad_carga_kg: embarcacion.emb_capacidad_carga_kg || '',
+        emb_capacidad_carga: embarcacion.emb_capacidad_carga || '',
         emb_tipo_motor: embarcacion.emb_tipo_motor || '',
-        emb_estado: embarcacion.emb_estado || 'Activa',
-        emb_fk_cooperativa: embarcacion.emb_fk_cooperativa || ''
+        emb_estado: embarcacion.emb_estatus || 'Activa',
+        emb_fk_cooperativa: embarcacion.emb_fk_cooperativa || '',
+        emb_fk_categoria: embarcacion.emb_fk_categoria || ''
       });
     } else {
       setCurrentEmbarcacion(null);
@@ -71,10 +91,11 @@ const EmbarcacionCRUD = () => {
         emb_matricula: '',
         emb_eslora: '',
         emb_manga: '',
-        emb_capacidad_carga_kg: '',
+        emb_capacidad_carga: '',
         emb_tipo_motor: '',
         emb_estado: 'Activa',
-        emb_fk_cooperativa: ''
+        emb_fk_cooperativa: '',
+        emb_fk_categoria: ''
       });
     }
     setIsModalOpen(true);
@@ -105,7 +126,8 @@ const EmbarcacionCRUD = () => {
       const dataToSubmit = { ...formData };
       if (dataToSubmit.emb_eslora === '') dataToSubmit.emb_eslora = null;
       if (dataToSubmit.emb_manga === '') dataToSubmit.emb_manga = null;
-      if (dataToSubmit.emb_capacidad_carga_kg === '') dataToSubmit.emb_capacidad_carga_kg = null;
+      if (dataToSubmit.emb_capacidad_carga === '') dataToSubmit.emb_capacidad_carga = null;
+      if (dataToSubmit.emb_fk_categoria === '') dataToSubmit.emb_fk_categoria = null;
 
       if (currentEmbarcacion) {
         await axios.put(`/embarcaciones/${currentEmbarcacion.emb_id}`, dataToSubmit);
@@ -166,6 +188,7 @@ const EmbarcacionCRUD = () => {
                   <th className="p-4 font-semibold">ID</th>
                   <th className="p-4 font-semibold">Matrícula</th>
                   <th className="p-4 font-semibold">Nombre</th>
+                  <th className="p-4 font-semibold">Categoría</th>
                   <th className="p-4 font-semibold">Cooperativa</th>
                   <th className="p-4 font-semibold">Carga (kg)</th>
                   <th className="p-4 font-semibold">Estado</th>
@@ -178,11 +201,16 @@ const EmbarcacionCRUD = () => {
                     <td className="p-4 text-zinc-500">#{emb.emb_id}</td>
                     <td className="p-4 font-mono text-white">{emb.emb_matricula}</td>
                     <td className="p-4 font-medium text-white">{emb.emb_nombre}</td>
-                    <td className="p-4">{emb.coop_nombre || `ID: ${emb.emb_fk_cooperativa}`}</td>
-                    <td className="p-4">{emb.emb_capacidad_carga_kg ? `${emb.emb_capacidad_carga_kg} kg` : 'N/A'}</td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoStyle(emb.emb_estado)}`}>
-                        {emb.emb_estado}
+                      <span className="px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded text-[10px] font-bold uppercase">
+                        {emb.categoria || 'Sin Cat.'}
+                      </span>
+                    </td>
+                    <td className="p-4">{emb.coop_nombre || `ID: ${emb.emb_fk_cooperativa}`}</td>
+                    <td className="p-4">{emb.emb_capacidad_carga ? `${emb.emb_capacidad_carga} kg` : 'N/A'}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoStyle(emb.emb_estatus)}`}>
+                        {emb.emb_estatus}
                       </span>
                     </td>
                     <td className="p-4">
@@ -275,9 +303,25 @@ const EmbarcacionCRUD = () => {
                     required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
                   >
-                    <option value="">Seleccione cooperativa...</option>
+                    <option value="">Cooperativa...</option>
                     {cooperativas.map(c => (
                       <option key={c.coop_id} value={c.coop_id}>{c.coop_nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-zinc-300">Categoría de Barco *</label>
+                  <select
+                    name="emb_fk_categoria"
+                    value={formData.emb_fk_categoria}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  >
+                    <option value="">Categoría...</option>
+                    {categorias.map(cat => (
+                      <option key={cat.cat_id} value={cat.cat_id}>{cat.cat_nombre}</option>
                     ))}
                   </select>
                 </div>
@@ -314,8 +358,8 @@ const EmbarcacionCRUD = () => {
                   <input
                     type="number"
                     step="0.01"
-                    name="emb_capacidad_carga_kg"
-                    value={formData.emb_capacidad_carga_kg}
+                    name="emb_capacidad_carga"
+                    value={formData.emb_capacidad_carga}
                     onChange={handleInputChange}
                     min="0"
                     placeholder="Ej. 1500"

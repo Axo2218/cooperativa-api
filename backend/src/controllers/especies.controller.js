@@ -5,7 +5,7 @@ const getEspecies = async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT e.*, c.cat_esp_nombre
-            FROM especies e
+            FROM especie e
             LEFT JOIN categoria_especie c ON e.esp_fk_categoria = c.cat_esp_id
             ORDER BY e.esp_id ASC
         `);
@@ -20,7 +20,7 @@ const getEspecies = async (req, res) => {
 const getEspecieById = async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query('SELECT * FROM especies WHERE esp_id = $1', [id]);
+        const result = await pool.query('SELECT * FROM especie WHERE esp_id = $1', [id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Especie no encontrada' });
         res.json(result.rows[0]);
     } catch (error) {
@@ -36,16 +36,15 @@ const createEspecie = async (req, res) => {
             esp_nombre_comun,
             esp_nombre_cientifico,
             esp_fk_categoria,
-            esp_temporada_veda_inicio,
-            esp_temporada_veda_fin,
-            esp_precio_sugerido_kg
+            esp_en_veda,
+            esp_precio_kilo_referencia
         } = req.body;
 
         const result = await pool.query(
-            `INSERT INTO especies 
-            (esp_nombre_comun, esp_nombre_cientifico, esp_fk_categoria, esp_temporada_veda_inicio, esp_temporada_veda_fin, esp_precio_sugerido_kg) 
-            VALUES ($1, $2, $3, $4, $5, COALESCE($6, 0)) RETURNING *`,
-            [esp_nombre_comun, esp_nombre_cientifico, esp_fk_categoria, esp_temporada_veda_inicio || null, esp_temporada_veda_fin || null, esp_precio_sugerido_kg || 0]
+            `INSERT INTO especie 
+            (esp_nombre_comun, esp_nombre_cientifico, esp_fk_categoria, esp_en_veda, esp_precio_kilo_referencia) 
+            VALUES ($1, $2, $3, $4, COALESCE($5, 0)) RETURNING *`,
+            [esp_nombre_comun, esp_nombre_cientifico, esp_fk_categoria, esp_en_veda || false, esp_precio_kilo_referencia || 0]
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -62,21 +61,19 @@ const updateEspecie = async (req, res) => {
             esp_nombre_comun,
             esp_nombre_cientifico,
             esp_fk_categoria,
-            esp_temporada_veda_inicio,
-            esp_temporada_veda_fin,
-            esp_precio_sugerido_kg
+            esp_en_veda,
+            esp_precio_kilo_referencia
         } = req.body;
 
         const result = await pool.query(
-            `UPDATE especies 
+            `UPDATE especie 
             SET esp_nombre_comun = $1, 
                 esp_nombre_cientifico = $2, 
                 esp_fk_categoria = $3, 
-                esp_temporada_veda_inicio = $4, 
-                esp_temporada_veda_fin = $5, 
-                esp_precio_sugerido_kg = $6 
-            WHERE esp_id = $7 RETURNING *`,
-            [esp_nombre_comun, esp_nombre_cientifico, esp_fk_categoria, esp_temporada_veda_inicio || null, esp_temporada_veda_fin || null, esp_precio_sugerido_kg || 0, id]
+                esp_en_veda = $4, 
+                esp_precio_kilo_referencia = $5 
+            WHERE esp_id = $6 RETURNING *`,
+            [esp_nombre_comun, esp_nombre_cientifico, esp_fk_categoria, esp_en_veda || false, esp_precio_kilo_referencia || 0, id]
         );
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Especie no encontrada' });
@@ -91,7 +88,7 @@ const updateEspecie = async (req, res) => {
 const deleteEspecie = async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query('DELETE FROM especies WHERE esp_id = $1 RETURNING *', [id]);
+        const result = await pool.query('DELETE FROM especie WHERE esp_id = $1 RETURNING *', [id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Especie no encontrada' });
         res.json({ message: 'Especie eliminada exitosamente' });
     } catch (error) {

@@ -1,47 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../services/api';
-import { Plus, Edit2, Trash2, X, AlertTriangle, PackageSearch } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, PackageSearch, PackagePlus } from 'lucide-react';
 
 const InsumosCRUD = () => {
   const [insumos, setInsumos] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [unidades, setUnidades] = useState([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [currentInsumo, setCurrentInsumo] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [installations, setInstallations] = useState([]);
+  const [selectedInstallation, setSelectedInstallation] = useState('');
+  
+  const [stockFormData, setStockFormData] = useState({
+    inst_id: '',
+    cantidad: 0
+  });
   
   const [formData, setFormData] = useState({
     ins_nombre: '',
-    ins_descripcion: '',
-    ins_fk_categoria: '',
+    ins_categoria: '',
     ins_unidad_medida: 'Piezas',
+    ins_costo_unitario_referencia: 0,
     ins_stock_actual: 0,
     ins_stock_minimo: 0
   });
 
   useEffect(() => {
-    fetchInsumos();
-    fetchCategorias();
+    fetchCatalogos();
   }, []);
+
+  useEffect(() => {
+    fetchInsumos();
+  }, [selectedInstallation]);
+
+  const fetchCatalogos = async () => {
+    try {
+      // Cargamos por separado para evitar que un error en uno bloquee los demás
+      axios.get('/categoria-insumo/categorias').then(r => setCategorias(r.data)).catch(e => console.error('Error cats:', e));
+      axios.get('/unidades-medida').then(r => setUnidades(r.data)).catch(e => console.error('Error unis:', e));
+      axios.get('/instalaciones').then(r => {
+        console.log('Instalaciones cargadas:', r.data);
+        setInstallations(r.data);
+      }).catch(e => console.error('Error insts:', e));
+    } catch (error) {
+      console.error('Error general al cargar catálogos:', error);
+    }
+  };
 
   const fetchInsumos = async () => {
     try {
-      const { data } = await axios.get('/insumos');
+      const url = selectedInstallation ? `/insumos?inst_id=${selectedInstallation}` : '/insumos';
+      const { data } = await axios.get(url);
       setInsumos(data);
     } catch (error) {
       console.error('Error al cargar insumos:', error);
     }
   };
 
-  const fetchCategorias = async () => {
-    try {
-      const { data } = await axios.get('/categoria-insumo');
-      setCategorias(data);
-    } catch (error) {
-      console.error('Error al cargar categorías de insumos:', error);
-    }
-  };
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -54,9 +74,9 @@ const InsumosCRUD = () => {
       setCurrentInsumo(insumo);
       setFormData({
         ins_nombre: insumo.ins_nombre || '',
-        ins_descripcion: insumo.ins_descripcion || '',
-        ins_fk_categoria: insumo.ins_fk_categoria || '',
+        ins_categoria: insumo.ins_categoria || '',
         ins_unidad_medida: insumo.ins_unidad_medida || 'Piezas',
+        ins_costo_unitario_referencia: insumo.ins_costo_unitario_referencia || 0,
         ins_stock_actual: insumo.ins_stock_actual || 0,
         ins_stock_minimo: insumo.ins_stock_minimo || 0
       });
@@ -64,9 +84,9 @@ const InsumosCRUD = () => {
       setCurrentInsumo(null);
       setFormData({
         ins_nombre: '',
-        ins_descripcion: '',
-        ins_fk_categoria: '',
+        ins_categoria: '',
         ins_unidad_medida: 'Piezas',
+        ins_costo_unitario_referencia: 0,
         ins_stock_actual: 0,
         ins_stock_minimo: 0
       });
@@ -121,6 +141,35 @@ const InsumosCRUD = () => {
     }
   };
 
+  const openStockModal = (insumo) => {
+    setErrorMsg('');
+    setCurrentInsumo(insumo);
+    setStockFormData({
+      inst_id: selectedInstallation || '',
+      cantidad: insumo.ins_stock_actual || 0
+    });
+    setIsStockModalOpen(true);
+  };
+
+  const closeStockModal = () => {
+    setIsStockModalOpen(false);
+    setCurrentInsumo(null);
+    setErrorMsg('');
+  };
+
+  const handleStockSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    try {
+      await axios.patch(`/insumos/${currentInsumo.ins_id}/stock`, stockFormData);
+      fetchInsumos();
+      closeStockModal();
+    } catch (error) {
+      console.error('Error al ajustar stock:', error);
+      setErrorMsg(error.response?.data?.error || 'Ocurrió un error inesperado al ajustar el stock.');
+    }
+  };
+
   const getStockStatus = (actual, minimo) => {
     if (actual <= 0) return { label: 'Agotado', style: 'bg-red-500/10 text-red-500 border-red-500/20' };
     if (actual <= minimo) return { label: 'Stock Bajo', style: 'bg-amber-500/10 text-amber-500 border-amber-500/20' };
@@ -135,13 +184,30 @@ const InsumosCRUD = () => {
             <PackageSearch className="text-white" size={28} />
             <h1 className="text-2xl font-bold text-white">Catálogo de Insumos</h1>
           </div>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-          >
-            <Plus size={20} />
-            Nuevo Insumo
-          </button>
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Ubicación:</label>
+              <select
+                value={selectedInstallation}
+                onChange={(e) => setSelectedInstallation(e.target.value)}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all min-w-[220px] shadow-inner"
+              >
+                <option value="" className="bg-zinc-900 text-white">Todas (Stock Total)</option>
+                {installations.map(inst => (
+                  <option key={inst.inst_id} value={inst.inst_id} className="bg-zinc-900 text-white">
+                    {inst.inst_nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap"
+            >
+              <Plus size={20} />
+              Nuevo Insumo
+            </button>
+          </div>
         </div>
 
         <div className="bg-zinc-800/50 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
@@ -164,11 +230,8 @@ const InsumosCRUD = () => {
                   return (
                     <tr key={insumo.ins_id} className="hover:bg-zinc-800/50 transition-colors">
                       <td className="p-4 text-zinc-500">#{insumo.ins_id}</td>
-                      <td className="p-4">
-                        <div className="text-white font-medium">{insumo.ins_nombre}</div>
-                        <div className="text-xs text-zinc-500 truncate max-w-[200px]">{insumo.ins_descripcion}</div>
-                      </td>
-                      <td className="p-4">{insumo.cat_ins_nombre || `ID: ${insumo.ins_fk_categoria}`}</td>
+                      <td className="p-4 font-medium text-white">{insumo.ins_nombre}</td>
+                      <td className="p-4">{insumo.ins_categoria}</td>
                       <td className="p-4 text-right">
                         <span className="font-mono text-white">{insumo.ins_stock_actual}</span> {insumo.ins_unidad_medida}
                       </td>
@@ -182,6 +245,13 @@ const InsumosCRUD = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => openStockModal(insumo)}
+                            className="text-zinc-400 hover:text-blue-500 transition-colors p-1"
+                            title="Ajustar Stock"
+                          >
+                            <PackagePlus size={18} />
+                          </button>
                           <button
                             onClick={() => openModal(insumo)}
                             className="text-zinc-400 hover:text-emerald-500 transition-colors p-1"
@@ -249,70 +319,49 @@ const InsumosCRUD = () => {
                   />
                 </div>
 
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-sm font-medium text-zinc-300">Descripción</label>
-                  <textarea
-                    name="ins_descripcion"
-                    value={formData.ins_descripcion}
-                    onChange={handleInputChange}
-                    rows="2"
-                    placeholder="Detalles adicionales del insumo..."
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors resize-none"
-                  ></textarea>
-                </div>
+
 
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-zinc-300">Categoría *</label>
                   <select
-                    name="ins_fk_categoria"
-                    value={formData.ins_fk_categoria}
+                    name="ins_categoria"
+                    value={formData.ins_categoria}
                     onChange={handleInputChange}
                     required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
                   >
-                    <option value="">Seleccione una categoría...</option>
+                    <option value="">Seleccione categoría...</option>
                     {categorias.map(c => (
-                      <option key={c.cat_ins_id} value={c.cat_ins_id}>{c.cat_ins_nombre}</option>
+                      <option key={c.cat_id} value={c.cat_nombre}>{c.cat_nombre}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-zinc-300">Unidad de Medida *</label>
-                  <input
-                    type="text"
+                  <select
                     name="ins_unidad_medida"
                     value={formData.ins_unidad_medida}
                     onChange={handleInputChange}
                     required
-                    placeholder="Ej. Litros, Metros, Piezas, Cajas"
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
+                  >
+                    <option value="">Seleccione unidad...</option>
+                    {unidades.map(u => (
+                      <option key={u.uni_id} value={u.uni_nombre}>{u.uni_nombre}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-300">Stock Actual *</label>
+                  <label className="text-sm font-medium text-zinc-300">Costo Ref. Unitario (MXN) *</label>
                   <input
                     type="number"
                     step="0.01"
-                    name="ins_stock_actual"
-                    value={formData.ins_stock_actual}
+                    name="ins_costo_unitario_referencia"
+                    value={formData.ins_costo_unitario_referencia}
                     onChange={handleInputChange}
                     required
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-300">Stock Mínimo de Alerta *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="ins_stock_minimo"
-                    value={formData.ins_stock_minimo}
-                    onChange={handleInputChange}
-                    required
-                    min="0"
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
@@ -372,6 +421,81 @@ const InsumosCRUD = () => {
                 Sí, eliminar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ajustar Stock */}
+      {isStockModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center p-6 border-b border-zinc-800">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <PackagePlus className="text-blue-500" size={24} />
+                Ajustar Stock
+              </h2>
+              <button onClick={closeStockModal} className="text-zinc-400 hover:text-white transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleStockSubmit} className="p-6">
+              <div className="mb-4">
+                <p className="text-sm text-zinc-400 mb-4">
+                  Ajustando stock para: <span className="text-white font-medium">{currentInsumo?.ins_nombre}</span>
+                </p>
+                
+                {errorMsg && (
+                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
+                    {errorMsg}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-zinc-300">Ubicación / Instalación *</label>
+                    <select
+                      value={stockFormData.inst_id}
+                      onChange={(e) => setStockFormData({...stockFormData, inst_id: e.target.value})}
+                      required
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    >
+                      <option value="">Seleccione ubicación...</option>
+                      {installations.map(inst => (
+                        <option key={inst.inst_id} value={inst.inst_id}>{inst.inst_nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-zinc-300">Nueva Cantidad Total ({currentInsumo?.ins_unidad_medida}) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={stockFormData.cantidad}
+                      onChange={(e) => setStockFormData({...stockFormData, cantidad: e.target.value})}
+                      required
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeStockModal}
+                  className="px-4 py-2 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors font-medium"
+                >
+                  Actualizar Stock
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

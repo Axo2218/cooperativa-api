@@ -9,12 +9,16 @@ const obtenerCatalogos = async (req, res) => {
         const capitanes = await pool.query("SELECT per_id, per_nombre || ' ' || per_apellidos AS nombre_completo FROM personal");
 
         const zonas = await pool.query("SELECT zona_id, zona_nombre FROM zona_pesca");
+        const categorias = await pool.query("SELECT * FROM categoria_embarcacion");
+        const cooperativas = await pool.query("SELECT coop_id, coop_nombre FROM cooperativa");
 
         // Devolvemos todo en un solo paquete
         res.status(200).json({
             embarcaciones: embarcaciones.rows,
             capitanes: capitanes.rows,
-            zonas: zonas.rows
+            zonas: zonas.rows,
+            categorias: categorias.rows,
+            cooperativas: cooperativas.rows
         });
     } catch (error) {
         console.error(error);

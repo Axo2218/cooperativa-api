@@ -3,12 +3,22 @@ const pool = require('../config/db');
 // Obtener todas las embarcaciones
 const getEmbarcaciones = async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT e.*, coop.coop_nombre
+        const { cooperativa } = req.query;
+        let query = `
+            SELECT e.*, coop.coop_nombre, cat.cat_nombre as categoria
             FROM embarcacion e
             LEFT JOIN cooperativa coop ON e.emb_fk_cooperativa = coop.coop_id
-            ORDER BY e.emb_id ASC
-        `);
+            LEFT JOIN categoria_embarcacion cat ON e.emb_fk_categoria = cat.cat_id
+        `;
+        let params = [];
+
+        if (cooperativa) {
+            query += ` WHERE e.emb_fk_cooperativa = $1 `;
+            params.push(cooperativa);
+        }
+
+        query += ` ORDER BY e.emb_id ASC `;
+        const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
         console.error('Error al obtener embarcaciones:', error);
@@ -37,17 +47,18 @@ const createEmbarcacion = async (req, res) => {
             emb_matricula,
             emb_eslora,
             emb_manga,
-            emb_capacidad_carga_kg,
+            emb_capacidad_carga,
             emb_tipo_motor,
             emb_estado,
-            emb_fk_cooperativa
+            emb_fk_cooperativa,
+            emb_fk_categoria
         } = req.body;
 
         const result = await pool.query(
             `INSERT INTO embarcacion 
-            (emb_nombre, emb_matricula, emb_eslora, emb_manga, emb_capacidad_carga_kg, emb_tipo_motor, emb_estado, emb_fk_cooperativa) 
-            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'Activa'), $8) RETURNING *`,
-            [emb_nombre, emb_matricula, emb_eslora || null, emb_manga || null, emb_capacidad_carga_kg || null, emb_tipo_motor, emb_estado, emb_fk_cooperativa]
+            (emb_nombre, emb_matricula, emb_eslora, emb_manga, emb_capacidad_carga, emb_tipo_motor, emb_estatus, emb_fk_cooperativa, emb_fk_categoria) 
+            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'Activa'), $8, $9) RETURNING *`,
+            [emb_nombre, emb_matricula, emb_eslora || null, emb_manga || null, emb_capacidad_carga || null, emb_tipo_motor, emb_estado, emb_fk_cooperativa, emb_fk_categoria]
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -55,7 +66,7 @@ const createEmbarcacion = async (req, res) => {
         if (error.code === '23505') {
             return res.status(400).json({ error: 'La matrícula ya está registrada en otra embarcación' });
         }
-        res.status(500).json({ error: 'Error interno del servidor' });
+        res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
     }
 };
 
@@ -68,10 +79,11 @@ const updateEmbarcacion = async (req, res) => {
             emb_matricula,
             emb_eslora,
             emb_manga,
-            emb_capacidad_carga_kg,
+            emb_capacidad_carga,
             emb_tipo_motor,
             emb_estado,
-            emb_fk_cooperativa
+            emb_fk_cooperativa,
+            emb_fk_categoria
         } = req.body;
 
         const result = await pool.query(
@@ -80,12 +92,13 @@ const updateEmbarcacion = async (req, res) => {
                 emb_matricula = $2, 
                 emb_eslora = $3, 
                 emb_manga = $4, 
-                emb_capacidad_carga_kg = $5, 
+                emb_capacidad_carga = $5, 
                 emb_tipo_motor = $6, 
-                emb_estado = $7, 
-                emb_fk_cooperativa = $8 
-            WHERE emb_id = $9 RETURNING *`,
-            [emb_nombre, emb_matricula, emb_eslora || null, emb_manga || null, emb_capacidad_carga_kg || null, emb_tipo_motor, emb_estado, emb_fk_cooperativa, id]
+                emb_estatus = $7, 
+                emb_fk_cooperativa = $8,
+                emb_fk_categoria = $9
+            WHERE emb_id = $10 RETURNING *`,
+            [emb_nombre, emb_matricula, emb_eslora || null, emb_manga || null, emb_capacidad_carga || null, emb_tipo_motor, emb_estado, emb_fk_cooperativa, emb_fk_categoria, id]
         );
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Embarcación no encontrada' });

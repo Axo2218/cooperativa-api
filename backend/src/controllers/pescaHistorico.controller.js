@@ -1,16 +1,33 @@
 const pool = require('../config/db');
 
-// Obtener todo el historial de pesca
+// Obtener todo el historial de pesca (Viajes Completados con Lujo de Detalle)
 const getPescaHistorico = async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT p.*, 
-                   e.emb_nombre, e.emb_matricula,
-                   esp.esp_nombre_comun
-            FROM pesca_historico p
-            LEFT JOIN embarcacion e ON p.pes_fk_embarcacion = e.emb_id
-            LEFT JOIN especies esp ON p.pes_fk_especie_principal = esp.esp_id
-            ORDER BY p.pes_fecha_salida DESC, p.pes_id DESC
+            SELECT 
+                v.via_id,
+                v.via_fecha_salida,
+                v.via_fecha_llegada,
+                v.via_total_kg,
+                v.via_total_ingresos,
+                e.emb_nombre,
+                e.emb_matricula,
+                p_cap.per_nombre || ' ' || p_cap.per_apellidos AS capitan_nombre,
+                -- Agregamos la tripulación como una lista
+                (SELECT STRING_AGG(p_trip.per_nombre || ' ' || p_trip.per_apellidos, ', ')
+                 FROM viaje_personal vp
+                 JOIN personal p_trip ON vp.via_per_fk_personal = p_trip.per_id
+                 WHERE vp.via_per_fk_viaje = v.via_id) AS tripulacion,
+                -- Agregamos las especies capturadas
+                (SELECT STRING_AGG(esp.esp_nombre_comun || ' (' || dc.det_cap_kilogramos || 'kg)', ' | ')
+                 FROM viaje_detalle_captura dc
+                 JOIN especie esp ON dc.det_cap_fk_especie = esp.esp_id
+                 WHERE dc.det_cap_fk_viaje = v.via_id) AS detalle_pesca
+            FROM viaje v
+            LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
+            LEFT JOIN personal p_cap ON v.via_fk_capitan = p_cap.per_id
+            WHERE v.via_estatus = 'Completado'
+            ORDER BY v.via_fecha_llegada DESC
         `);
         res.json(result.rows);
     } catch (error) {

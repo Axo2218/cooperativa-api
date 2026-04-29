@@ -7,5 +7,6 @@ router.get('/:id', insumosController.getInsumoById);
 router.post('/', insumosController.createInsumo);
 router.put('/:id', insumosController.updateInsumo);
 router.delete('/:id', insumosController.deleteInsumo);
+router.patch('/:ins_id/stock', insumosController.ajustarStock);
 
 module.exports = router;

@@ -20,7 +20,7 @@ const CategoriaCRUD = () => {
 
   const fetchCategorias = async () => {
     try {
-      const { data } = await axios.get('/categoria-insumo').catch(() => axios.get('/categoria'));
+      const { data } = await axios.get('/categoria-insumo/categorias');
       setCategorias(data);
     } catch (error) {
       console.error('Error al cargar categorías:', error);
@@ -73,9 +73,9 @@ const CategoriaCRUD = () => {
     setErrorMsg('');
     try {
       if (currentRegistro) {
-        await axios.put(`/categoria-insumo/${currentRegistro.cat_id}`, formData).catch(() => axios.put(`/categoria/${currentRegistro.cat_id}`, formData));
+        await axios.put(`/categoria-insumo/categorias/${currentRegistro.cat_id}`, formData);
       } else {
-        await axios.post('/categoria-insumo', formData).catch(() => axios.post('/categoria', formData));
+        await axios.post('/categoria-insumo/categorias', formData);
       }
       fetchCategorias();
       closeModal();
@@ -88,7 +88,7 @@ const CategoriaCRUD = () => {
   const handleDelete = async () => {
     setErrorMsg('');
     try {
-      await axios.delete(`/categoria-insumo/${currentRegistro.cat_id}`).catch(() => axios.delete(`/categoria/${currentRegistro.cat_id}`));
+      await axios.delete(`/categoria-insumo/categorias/${currentRegistro.cat_id}`);
       fetchCategorias();
       closeDeleteModal();
     } catch (error) {

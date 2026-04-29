@@ -15,9 +15,8 @@ const EspeciesCRUD = () => {
     esp_nombre_comun: '',
     esp_nombre_cientifico: '',
     esp_fk_categoria: '',
-    esp_temporada_veda_inicio: '',
-    esp_temporada_veda_fin: '',
-    esp_precio_sugerido_kg: 0
+    esp_en_veda: false,
+    esp_precio_kilo_referencia: 0
   });
 
   useEffect(() => {
@@ -44,8 +43,8 @@ const EspeciesCRUD = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
   const openModal = (especie = null) => {
@@ -56,9 +55,8 @@ const EspeciesCRUD = () => {
         esp_nombre_comun: especie.esp_nombre_comun || '',
         esp_nombre_cientifico: especie.esp_nombre_cientifico || '',
         esp_fk_categoria: especie.esp_fk_categoria || '',
-        esp_temporada_veda_inicio: especie.esp_temporada_veda_inicio ? especie.esp_temporada_veda_inicio.split('T')[0] : '',
-        esp_temporada_veda_fin: especie.esp_temporada_veda_fin ? especie.esp_temporada_veda_fin.split('T')[0] : '',
-        esp_precio_sugerido_kg: especie.esp_precio_sugerido_kg || 0
+        esp_en_veda: especie.esp_en_veda || false,
+        esp_precio_kilo_referencia: especie.esp_precio_kilo_referencia || 0
       });
     } else {
       setCurrentEspecie(null);
@@ -66,9 +64,8 @@ const EspeciesCRUD = () => {
         esp_nombre_comun: '',
         esp_nombre_cientifico: '',
         esp_fk_categoria: '',
-        esp_temporada_veda_inicio: '',
-        esp_temporada_veda_fin: '',
-        esp_precio_sugerido_kg: 0
+        esp_en_veda: false,
+        esp_precio_kilo_referencia: 0
       });
     }
     setIsModalOpen(true);
@@ -97,8 +94,6 @@ const EspeciesCRUD = () => {
     setErrorMsg('');
     try {
       const dataToSubmit = { ...formData };
-      if (!dataToSubmit.esp_temporada_veda_inicio) dataToSubmit.esp_temporada_veda_inicio = null;
-      if (!dataToSubmit.esp_temporada_veda_fin) dataToSubmit.esp_temporada_veda_fin = null;
 
       if (currentEspecie) {
         await axios.put(`/especies/${currentEspecie.esp_id}`, dataToSubmit);
@@ -130,15 +125,6 @@ const EspeciesCRUD = () => {
       style: 'currency',
       currency: 'MXN'
     }).format(amount);
-  };
-
-  const estaEnVeda = (inicio, fin) => {
-    if (!inicio || !fin) return false;
-    const hoy = new Date();
-    // Normalizamos ignorando el año (las vedas suelen ser anuales pero asumiremos validación de fechas directas por ahora)
-    const fechaInicio = new Date(inicio);
-    const fechaFin = new Date(fin);
-    return hoy >= fechaInicio && hoy <= fechaFin;
   };
 
   return (
@@ -174,7 +160,7 @@ const EspeciesCRUD = () => {
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {especies.map((especie) => {
-                  const enVeda = estaEnVeda(especie.esp_temporada_veda_inicio, especie.esp_temporada_veda_fin);
+                  const enVeda = especie.esp_en_veda;
                   return (
                     <tr key={especie.esp_id} className="hover:bg-zinc-800/50 transition-colors">
                       <td className="p-4 text-zinc-500">#{especie.esp_id}</td>
@@ -182,19 +168,20 @@ const EspeciesCRUD = () => {
                       <td className="p-4 italic text-sm">{especie.esp_nombre_cientifico || 'N/A'}</td>
                       <td className="p-4">{especie.cat_esp_nombre || `ID: ${especie.esp_fk_categoria}`}</td>
                       <td className="p-4">
-                        {especie.esp_temporada_veda_inicio && especie.esp_temporada_veda_fin ? (
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${enVeda ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
-                            <span className="text-xs">
-                              {new Date(especie.esp_temporada_veda_inicio).toLocaleDateString()} - {new Date(especie.esp_temporada_veda_fin).toLocaleDateString()}
-                            </span>
+                        {enVeda ? (
+                          <div className="flex items-center gap-2 text-red-500 font-medium">
+                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                            En Veda
                           </div>
                         ) : (
-                          <span className="text-zinc-500 text-xs">Sin temporada fija</span>
+                          <div className="flex items-center gap-2 text-emerald-500 font-medium">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            Permitida
+                          </div>
                         )}
                       </td>
                       <td className="p-4 text-right text-white font-mono">
-                        {formatCurrency(especie.esp_precio_sugerido_kg)}
+                        {formatCurrency(especie.esp_precio_kilo_referencia)}
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-3">
@@ -294,45 +281,38 @@ const EspeciesCRUD = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-300">Precio Sugerido por Kg (MXN)</label>
+                  <label className="text-sm font-medium text-zinc-300">Precio Ref. por Kg (MXN) *</label>
                   <div className="relative">
                     <span className="absolute left-3 top-2 text-zinc-500">$</span>
                     <input
                       type="number"
                       step="0.01"
-                      name="esp_precio_sugerido_kg"
-                      value={formData.esp_precio_sugerido_kg}
+                      name="esp_precio_kilo_referencia"
+                      value={formData.esp_precio_kilo_referencia}
                       onChange={handleInputChange}
                       min="0"
+                      required
                       className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-8 pr-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div className="md:col-span-2 pt-4 pb-2 border-b border-zinc-800">
-                  <h4 className="text-sm font-semibold text-emerald-400">Temporada de Veda (Opcional)</h4>
+                  <h4 className="text-sm font-semibold text-emerald-400">Estado de Pesca</h4>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-300">Fecha de Inicio</label>
+                <div className="space-y-1 flex items-center gap-3 mt-2">
                   <input
-                    type="date"
-                    name="esp_temporada_veda_inicio"
-                    value={formData.esp_temporada_veda_inicio}
+                    type="checkbox"
+                    id="esp_en_veda"
+                    name="esp_en_veda"
+                    checked={formData.esp_en_veda}
                     onChange={handleInputChange}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                    className="w-5 h-5 rounded border-zinc-700 text-emerald-500 focus:ring-emerald-500 bg-zinc-800"
                   />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-zinc-300">Fecha de Fin</label>
-                  <input
-                    type="date"
-                    name="esp_temporada_veda_fin"
-                    value={formData.esp_temporada_veda_fin}
-                    onChange={handleInputChange}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
+                  <label htmlFor="esp_en_veda" className="text-sm font-medium text-zinc-300 cursor-pointer">
+                    La especie se encuentra actualmente en temporada de veda
+                  </label>
                 </div>
               </div>
 

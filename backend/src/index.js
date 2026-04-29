@@ -15,9 +15,11 @@ app.use('/api/especies', require('./routes/especies.routes'));
 app.use('/api/categoria-especie', require('./routes/categoriaEspecie.routes'));
 app.use('/api/insumos', require('./routes/insumos.routes'));
 app.use('/api/categoria-insumo', require('./routes/categoria.routes'));
+app.use('/api/unidades-medida', require('./routes/unidadMedida.routes'));
 app.use('/api/embarcaciones', require('./routes/embarcacion.routes'));
 app.use('/api/personal', require('./routes/personal.routes'));
 app.use('/api/roles', require('./routes/rol.routes'));
+app.use('/api/instalaciones', require('./routes/instalacion.routes'));
 
 // Rutas - Viajes y Operaciones Marítimas
 app.use('/api/viajes', require('./routes/viaje.routes')); // Compatibilidad con dashboard
@@ -28,6 +30,7 @@ app.use('/api/viajeDetalleCaptura', require('./routes/viajeDetalleCaptura.routes
 app.use('/api/viajeGasto', require('./routes/viajeGasto.routes'));
 app.use('/api/pesca-historico', require('./routes/pescaHistorico.routes'));
 app.use('/api/zonas', require('./routes/zonaPesca.routes'));
+app.use('/api/viaje-insumos', require('./routes/viajeInsumo.routes'));
 
 // Rutas - Ventas y Finanzas
 app.use('/api/ventas', require('./routes/venta.routes'));
@@ -46,6 +49,7 @@ app.use('/api/cat-tipo-instalacion', require('./routes/catTipoInstalacion.routes
 app.use('/api/bitacora-mantenimiento', require('./routes/bitacoraMantenimiento.routes'));
 
 // Rutas - Sistema
+app.use('/api/stats', require('./routes/stats.routes'));
 app.use('/api/alertas-sistema', require('./routes/alertaSistema.routes'));
 app.use('/api/catalogo', require('./routes/catalogo.routes'));
 
