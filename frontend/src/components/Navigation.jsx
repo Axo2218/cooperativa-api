@@ -5,6 +5,7 @@ import { ChevronDown, Ship, Database, DollarSign, Users, ShieldAlert, Settings, 
 const Navigation = () => {
   const location = useLocation();
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const [scrolled, setScrolled] = useState(false);
   const navRefs = useRef({});
 
   const navGroups = [
@@ -117,8 +118,20 @@ const Navigation = () => {
     };
   }, [location.pathname]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <nav className="border-b border-zinc-800 bg-slate-950/80 backdrop-blur-md py-4 sticky top-0 z-50">
+    <nav className={`fixed top-0 inset-x-0 z-[100] transition-all duration-500 border-b ${
+      scrolled 
+        ? 'py-3 bg-black/60 backdrop-blur-xl border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.3)]' 
+        : 'py-5 bg-transparent border-transparent'
+    }`}>
       <div className="max-w-7xl mx-auto w-full px-6 flex justify-between items-center">
 
         {/* BRANDING */}

@@ -64,7 +64,7 @@ function App() {
         <div className="relative z-10 flex flex-col min-h-screen">
           <Navigation />
         
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative py-8">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative pt-20 py-8">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             
