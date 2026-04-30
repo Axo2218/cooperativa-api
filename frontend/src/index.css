@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply bg-[#020617] text-white;
+    min-height: 100vh;
+  }
+}
+
 @layer utilities {
   .kpi-content-transition {
     transition: max-height 0.6s cubic-bezier(0.4, 0, 0.2, 1), 

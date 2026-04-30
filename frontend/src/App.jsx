@@ -1,5 +1,5 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import topoBg from './assets/topo-bg.png';
 
 // Components
 import Navigation from './components/Navigation';
@@ -48,8 +48,21 @@ import AlertaSistemaCRUD from './components/AlertaSistemaCRUD';
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col">
-        <Navigation />
+      <div className="min-h-screen bg-[#020617] text-white font-sans flex flex-col relative overflow-x-hidden">
+        {/* Fondo Topográfico */}
+        <div 
+          className="fixed inset-0 pointer-events-none opacity-20 z-0"
+          style={{ 
+            backgroundImage: `url(${topoBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            maskImage: 'radial-gradient(circle at center, black 30%, transparent 100%)',
+            WebkitMaskImage: 'radial-gradient(circle at center, black 30%, transparent 100%)'
+          }}
+        />
+        <div className="relative z-10 flex flex-col min-h-screen">
+          <Navigation />
         
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative py-8">
           <Routes>
@@ -133,7 +146,8 @@ function App() {
             </div>
           </div>
         </footer>
-        <AIChatbot />
+          <AIChatbot />
+        </div>
       </div>
     </BrowserRouter>
   );

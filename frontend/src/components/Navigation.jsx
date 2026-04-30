@@ -118,7 +118,7 @@ const Navigation = () => {
   }, [location.pathname]);
 
   return (
-    <nav className="border-b border-zinc-800 bg-slate-950 py-4 sticky top-0 z-50">
+    <nav className="border-b border-zinc-800 bg-slate-950/80 backdrop-blur-md py-4 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto w-full px-6 flex justify-between items-center">
 
         {/* BRANDING */}

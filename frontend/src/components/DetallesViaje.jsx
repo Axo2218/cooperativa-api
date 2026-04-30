@@ -1,8 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Anchor, User, Map, DollarSign, Ship, MapPin, CheckCircle, XCircle, Users, Plus, FileText, Fish, TrendingUp, BarChart3, Package, ShoppingCart, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Anchor, User, Map, DollarSign, Ship, MapPin, CheckCircle, XCircle, Users, Plus, FileText, Fish, TrendingUp, BarChart3, Package, ShoppingCart, AlertCircle, Navigation } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { MapContainer, TileLayer, Marker, useMapEvents, Polygon } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 // 1. Importamos nuestra conexión a la API
 import api from '../services/api';
+
+// Configuración de iconos para Leaflet (evitar errores de Vite)
+const shipIcon = new L.DivIcon({
+    className: 'custom-ship-marker',
+    html: `<div style="background-color: #10b981; width: 12px; height: 12px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(16,185,129,0.8);"></div>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+});
+
+const MapClickHandler = ({ onLocationSelect }) => {
+    useMapEvents({
+        click(e) {
+            onLocationSelect(e.latlng);
+        },
+    });
+    return null;
+};
+
+// Formas de zonas para referencia visual en el mini-mapa
+const ZONE_SHAPES = {
+    1: [[18.53, -92.68], [18.65, -92.55], [18.85, -92.35], [19.15, -92.55], [19.25, -92.85], [19.05, -93.05], [18.75, -92.95], [18.58, -92.75]],
+    2: [[19.15, -92.55], [19.45, -92.15], [20.15, -92.45], [20.45, -91.85], [19.85, -91.25], [19.25, -91.65], [19.15, -92.05]],
+    3: [[18.35, -93.65], [18.42, -93.45], [18.55, -93.25], [18.85, -93.15], [19.05, -93.45], [18.85, -93.75], [18.55, -93.85]],
+    4: [[18.45, -93.25], [18.52, -93.05], [18.65, -92.85], [19.05, -92.75], [19.15, -93.05], [18.85, -93.35], [18.55, -93.45]]
+};
 
 // COMPONENTE DE RENDIMIENTO HISTÓRICO REUTILIZABLE (FUERA PARA ESTABILIDAD)
 const RendimientoHistorial = ({ isFullWidth, dataHistory }) => (
@@ -76,7 +104,8 @@ const DetallesViaje = ({ viaje, volver }) => {
     const [mostrarModalLlegada, setMostrarModalLlegada] = useState(false);
     const [datosLlegada, setDatosLlegada] = useState({ 
         fecha: new Date().toISOString().slice(0, 16), 
-        observaciones: '' 
+        observaciones: '',
+        via_fk_puerto: ''
     });
     const [dataHistory, setDataHistory] = useState([]);
     const [insumosViaje, setInsumosViaje] = useState([]);
@@ -85,8 +114,18 @@ const DetallesViaje = ({ viaje, volver }) => {
     const [mostrarModalReconciliacion, setMostrarModalReconciliacion] = useState(false);
     const [cantidadesTemp, setCantidadesTemp] = useState({}); // { ins_id: cantidad }
     const [cantidadesReconciliacion, setCantidadesReconciliacion] = useState({}); // { ins_id: cantidad_a_procesar }
+    const [instalaciones, setInstalaciones] = useState([]);
 
     const [nuevoTripulante, setNuevoTripulante] = useState({ id_personal: '', nombre: '', rol_id: '', rol_nombre: '' });
+    const [coordenadas, setCoordenadas] = useState({ 
+        lat: viaje.emb_latitud || '', 
+        lon: viaje.emb_longitud || '' 
+    });
+    const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
+    
+    // --- ESTADOS DE BÚSQUEDA ---
+    const [busquedaTripulante, setBusquedaTripulante] = useState('');
+    const [busquedaEspecie, setBusquedaEspecie] = useState('');
 
     useEffect(() => {
         const cargarDatos = async () => {
@@ -171,6 +210,12 @@ const DetallesViaje = ({ viaje, volver }) => {
                         setInventarioBodega(resInv.data);
                     } catch (e) { console.error("Error al cargar inventario de bodega:", e); }
                 }
+
+                // 8. Cargar Instalaciones (Puertos)
+                try {
+                    const resInst = await api.get('/instalaciones');
+                    setInstalaciones(resInst.data);
+                } catch (e) { console.error("Error al cargar instalaciones:", e); }
 
             } catch (error) {
                 console.error("Error general en cargarDatos:", error);
@@ -314,6 +359,24 @@ const DetallesViaje = ({ viaje, volver }) => {
             alert("Ocurrió un error al sincronizar los insumos.");
         }
     };
+
+    const actualizarUbicacion = async (e) => {
+        e.preventDefault();
+        if (!coordenadas.lat || !coordenadas.lon) return;
+        setIsUpdatingGPS(true);
+        try {
+            await api.patch(`/embarcaciones/coordenadas/${viaje.via_fk_embarcacion}`, {
+                emb_latitud: parseFloat(coordenadas.lat),
+                emb_longitud: parseFloat(coordenadas.lon)
+            });
+            alert("¡Ubicación actualizada en el radar activo!");
+        } catch (error) {
+            console.error("Error al actualizar coordenadas:", error);
+            alert("Error al reportar posición GPS.");
+        } finally {
+            setIsUpdatingGPS(false);
+        }
+    };
     
     const reconciliarInsumo = async (ins_id, accion) => {
         try {
@@ -415,7 +478,8 @@ const DetallesViaje = ({ viaje, volver }) => {
             await api.put(`/viaje/estatus/${viaje.via_id}`, { 
                 via_estatus: 'En Puerto',
                 via_fecha_llegada: datosLlegada.fecha,
-                via_observaciones: datosLlegada.observaciones
+                via_observaciones: datosLlegada.observaciones,
+                via_fk_puerto: datosLlegada.via_fk_puerto
             });
             alert("¡Arribo a puerto registrado exitosamente!");
             setMostrarModalLlegada(false);
@@ -545,8 +609,34 @@ const DetallesViaje = ({ viaje, volver }) => {
                             )}
 
                             {viaje.via_estatus === 'En Puerto' && (
-                                <form onSubmit={registrarCaptura} className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                    <div className="md:col-span-2"><label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Especie</label><select className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20" value={nuevaCaptura.especie_id} onChange={(e) => { const esp = especies.find(x => x.esp_id.toString() === e.target.value); setNuevaCaptura({ ...nuevaCaptura, especie_id: e.target.value, precio: esp?.esp_precio_kilo_referencia || '' }); }} required><option value="">Seleccionar...</option>{especies.map(e => <option key={e.esp_id} value={e.esp_id}>{e.esp_nombre_comun}</option>)}</select></div>
+                                <form onSubmit={registrarCaptura} className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end animate-in fade-in zoom-in-95 duration-500">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Especie</label>
+                                        <div className="space-y-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="🔍 Buscar especie..." 
+                                                value={busquedaEspecie}
+                                                onChange={(e) => setBusquedaEspecie(e.target.value)}
+                                                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500/50 transition-colors"
+                                            />
+                                            <select 
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20" 
+                                                value={nuevaCaptura.especie_id} 
+                                                onChange={(e) => { 
+                                                    const esp = especies.find(x => x.esp_id.toString() === e.target.value); 
+                                                    setNuevaCaptura({ ...nuevaCaptura, especie_id: e.target.value, precio: esp?.esp_precio_kilo_referencia || '' }); 
+                                                }} 
+                                                required
+                                            >
+                                                <option value="">Seleccionar...</option>
+                                                {especies
+                                                    .filter(e => e.esp_nombre_comun.toLowerCase().includes(busquedaEspecie.toLowerCase()))
+                                                    .map(e => <option key={e.esp_id} value={e.esp_id}>{e.esp_nombre_comun}</option>)
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">KG</label>
                                         <input 
@@ -677,8 +767,86 @@ const DetallesViaje = ({ viaje, volver }) => {
                             </div>
                         );
 
+                        const gpsBlock = viaje.via_estatus === 'En Curso' && (
+                            <div className="bg-zinc-950 p-6 rounded-[2rem] border border-zinc-800 ring-2 ring-emerald-500/20 bg-emerald-500/[0.02] shadow-xl animate-in zoom-in-95 duration-500">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-2xl">
+                                        <Navigation size={24} className="animate-pulse" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white">Posicionamiento GPS</h3>
+                                        <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Interactuar para marcar</p>
+                                    </div>
+                                </div>
+                                
+                                {/* MINI MAPA INTERACTIVO */}
+                                <div className="h-48 w-full rounded-2xl overflow-hidden border border-zinc-800 mb-4 relative z-0">
+                                    <MapContainer 
+                                        center={[parseFloat(coordenadas.lat) || 18.5, parseFloat(coordenadas.lon) || -93.0]} 
+                                        zoom={8} 
+                                        style={{ height: '100%', width: '100%' }}
+                                        zoomControl={false}
+                                    >
+                                        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                        {coordenadas.lat && coordenadas.lon && (
+                                            <Marker position={[coordenadas.lat, coordenadas.lon]} icon={shipIcon} />
+                                        )}
+                                        {viaje.via_fk_zona && ZONE_SHAPES[viaje.via_fk_zona] && (
+                                            <Polygon 
+                                                positions={ZONE_SHAPES[viaje.via_fk_zona]} 
+                                                pathOptions={{ color: '#ef4444', fillOpacity: 0.1, weight: 1, dashArray: '5, 5' }} 
+                                            />
+                                        )}
+                                        <MapClickHandler onLocationSelect={(latlng) => setCoordenadas({ lat: latlng.lat, lon: latlng.lng })} />
+                                    </MapContainer>
+                                    <div className="absolute bottom-2 right-2 z-[1000] bg-zinc-950/80 px-2 py-1 rounded text-[8px] text-zinc-400 font-bold uppercase border border-zinc-800">
+                                        Clic en mapa para ubicar
+                                    </div>
+                                </div>
+                                
+                                <form onSubmit={actualizarUbicacion} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2 tracking-widest">Latitud</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.000001"
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white outline-none focus:ring-2 ring-emerald-500/20 font-mono"
+                                                value={coordenadas.lat}
+                                                onChange={(e) => setCoordenadas({...coordenadas, lat: e.target.value})}
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2 tracking-widest">Longitud</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.000001"
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-white outline-none focus:ring-2 ring-emerald-500/20 font-mono"
+                                                value={coordenadas.lon}
+                                                onChange={(e) => setCoordenadas({...coordenadas, lon: e.target.value})}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <button 
+                                        type="submit" 
+                                        disabled={isUpdatingGPS}
+                                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-2xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 group text-sm"
+                                    >
+                                        <Navigation size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                        {isUpdatingGPS ? 'Reportando...' : 'ACTUALIZAR RADAR'}
+                                    </button>
+                                </form>
+                                <p className="mt-4 text-[9px] text-zinc-600 text-center font-medium italic">
+                                    * Esta posición se reflejará instantáneamente en el centro de control geoespacial.
+                                </p>
+                            </div>
+                        );
+
                         return (
                             <div className="flex flex-col gap-6">
+                                {gpsBlock}
                                 {tripulacionBlock}
                                 {equipamientoBlock}
                             </div>
@@ -698,41 +866,49 @@ const DetallesViaje = ({ viaje, volver }) => {
                         <button onClick={() => setMostrarModalTripulacion(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white"><XCircle size={20} /></button>
                         <h3 className="text-lg font-bold text-white mb-4">Alistar Tripulante</h3>
 
-                        <form onSubmit={agregarTripulante} className="space-y-4">
+                        <form onSubmit={agregarTripulante} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium text-zinc-400 mb-1">Personal Disponible</label>
-                                {/* El input de texto ahora es un majestuoso SELECT */}
-                                <select
-                                    value={nuevoTripulante.id_personal}
-                                    onChange={(e) => {
-                                        // Buscamos el nombre correspondiente al ID seleccionado para guardarlo
-                                        const personaSeleccionada = personalDisponible.find(p => p.per_id.toString() === e.target.value);
-                                        setNuevoTripulante({
-                                            ...nuevoTripulante,
-                                            id_personal: e.target.value,
-                                            nombre: personaSeleccionada ? personaSeleccionada.nombre_completo : ''
-                                        });
-                                    }}
-                                    required
-                                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                >
-                                    <option value="" disabled>Selecciona un tripulante...</option>
-                                    {personalDisponible.map(p => {
-                                        // Verificar si esta persona ya está en la tripulación actual (incluyendo capitán)
-                                        const yaAsignado = tripulacion.some(t => t.id === p.per_id) || p.per_id === viaje.via_fk_capitan;
-                                        
-                                        return (
-                                            <option 
-                                                key={p.per_id} 
-                                                value={p.per_id} 
-                                                disabled={yaAsignado}
-                                                className={yaAsignado ? 'text-zinc-600 italic' : ''}
-                                            >
-                                                {p.nombre_completo} {yaAsignado ? '(Ya asignado)' : ''}
-                                            </option>
-                                        );
-                                    })}
-                                </select>
+                                <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2 tracking-widest">Personal Disponible</label>
+                                <div className="space-y-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="🔍 Buscar por nombre..." 
+                                        value={busquedaTripulante}
+                                        onChange={(e) => setBusquedaTripulante(e.target.value)}
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500 transition-colors"
+                                    />
+                                    <select
+                                        value={nuevoTripulante.id_personal}
+                                        onChange={(e) => {
+                                            const personaSeleccionada = personalDisponible.find(p => p.per_id.toString() === e.target.value);
+                                            setNuevoTripulante({
+                                                ...nuevoTripulante,
+                                                id_personal: e.target.value,
+                                                nombre: personaSeleccionada ? personaSeleccionada.nombre_completo : ''
+                                            });
+                                        }}
+                                        required
+                                        className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 shadow-inner"
+                                    >
+                                        <option value="" disabled>Selecciona un tripulante...</option>
+                                        {personalDisponible
+                                            .filter(p => p.nombre_completo.toLowerCase().includes(busquedaTripulante.toLowerCase()))
+                                            .map(p => {
+                                                const yaAsignado = tripulacion.some(t => t.id === p.per_id) || p.per_id === viaje.via_fk_capitan;
+                                                return (
+                                                    <option 
+                                                        key={p.per_id} 
+                                                        value={p.per_id} 
+                                                        disabled={yaAsignado}
+                                                        className={yaAsignado ? 'text-zinc-600 italic' : ''}
+                                                    >
+                                                        {p.nombre_completo} {yaAsignado ? '(Ya asignado)' : ''}
+                                                    </option>
+                                                );
+                                            })
+                                        }
+                                    </select>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-zinc-400 mb-1">Rol a Bordo</label>
@@ -781,6 +957,20 @@ const DetallesViaje = ({ viaje, volver }) => {
                                     value={datosLlegada.fecha}
                                     onChange={(e) => setDatosLlegada({ ...datosLlegada, fecha: e.target.value })}
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Puerto de Arribo</label>
+                                <select 
+                                    required
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-500 transition-all"
+                                    value={datosLlegada.via_fk_puerto}
+                                    onChange={(e) => setDatosLlegada({ ...datosLlegada, via_fk_puerto: e.target.value })}
+                                >
+                                    <option value="">Seleccionar puerto...</option>
+                                    {instalaciones.map(inst => (
+                                        <option key={inst.inst_id} value={inst.inst_id}>{inst.inst_nombre}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Observaciones del Viaje</label>

@@ -24,6 +24,7 @@ const Dashboard = () => {
     coopProduction: []
   });
   const [selectedKpi, setSelectedKpi] = useState(null);
+  const [dbConnectionError, setDbConnectionError] = useState(false);
   const navigate = useNavigate();
 
   const cargarDatos = async () => {
@@ -34,8 +35,10 @@ const Dashboard = () => {
       ]);
       setViajes(respViajes.data);
       setStats(respStats.data);
+      setDbConnectionError(false);
     } catch (error) {
       console.error('Error al conectar con la base operativa:', error);
+      setDbConnectionError(true);
     }
   };
 
@@ -189,12 +192,27 @@ const Dashboard = () => {
             color="bg-indigo-500"
           />
 
-          <div className="mt-4 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
-            <p className="text-xs text-emerald-500 font-bold uppercase mb-1">Estado del Sistema</p>
+          <div className={`mt-4 p-4 rounded-xl border transition-all duration-500 ${
+            dbConnectionError 
+              ? 'bg-red-500/5 border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.05)]' 
+              : 'bg-emerald-500/5 border-emerald-500/10'
+          }`}>
+            <p className={`text-[10px] font-black uppercase mb-1 tracking-widest ${
+              dbConnectionError ? 'text-red-500' : 'text-emerald-500'
+            }`}>Estado del Sistema</p>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <p className="text-sm text-white">Sincronizado con DB</p>
+              <div className={`w-2 h-2 rounded-full ${
+                dbConnectionError 
+                  ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' 
+                  : 'bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]'
+              }`}></div>
+              <p className={`text-sm font-bold ${dbConnectionError ? 'text-red-400' : 'text-white'}`}>
+                {dbConnectionError ? 'Sin Conexión Operativa' : 'Sincronizado con DB'}
+              </p>
             </div>
+            {dbConnectionError && (
+              <p className="text-[10px] text-red-500/60 mt-2 italic">Reintentando enlace con el servidor...</p>
+            )}
           </div>
         </div>
 

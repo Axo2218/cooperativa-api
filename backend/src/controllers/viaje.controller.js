@@ -15,11 +15,13 @@ const obtenerViajes = async (req, res) => {
             e.emb_latitud,
             e.emb_longitud,
             p.per_nombre || ' ' || p.per_apellidos AS capitan,
-            z.zona_nombre
+            z.zona_nombre,
+            inst.inst_nombre AS puerto_arribo
         FROM viaje v
         LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
         LEFT JOIN personal p ON v.via_fk_capitan = p.per_id
         LEFT JOIN zona_pesca z ON v.via_fk_zona = z.zona_id
+        LEFT JOIN instalacion inst ON v.via_fk_puerto = inst.inst_id
         WHERE v.via_archivado = $1
         ORDER BY v.via_id DESC
         `;
@@ -41,16 +43,20 @@ const getViajeById = async (req, res) => {
                 e.emb_nombre AS barco, 
                 e.emb_categoria,
                 e.emb_capacidad_carga,
+                e.emb_latitud,
+                e.emb_longitud,
                 e.emb_fk_cooperativa,
                 c.coop_fk_instalacion AS id_bodega,
                 p.per_nombre || ' ' || p.per_apellidos AS capitan,
                 z.zona_nombre,
-                z.zona_cuadrante
+                z.zona_cuadrante,
+                inst.inst_nombre AS puerto_arribo
             FROM viaje v
             LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
             LEFT JOIN cooperativa c ON e.emb_fk_cooperativa = c.coop_id
             LEFT JOIN personal p ON v.via_fk_capitan = p.per_id
             LEFT JOIN zona_pesca z ON v.via_fk_zona = z.zona_id
+            LEFT JOIN instalacion inst ON v.via_fk_puerto = inst.inst_id
             WHERE via_id = $1
         `, [id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Viaje no encontrado' });
@@ -126,7 +132,7 @@ const actualizarEstatusViaje = async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
-        const { via_estatus, via_fecha_llegada, via_observaciones } = req.body; 
+        const { via_estatus, via_fecha_llegada, via_observaciones, via_fk_puerto } = req.body; 
 
         await client.query('BEGIN');
 
@@ -134,11 +140,12 @@ const actualizarEstatusViaje = async (req, res) => {
             UPDATE viaje 
             SET via_estatus = $1, 
                 via_fecha_llegada = COALESCE($2, via_fecha_llegada), 
-                via_observaciones = COALESCE($3, via_observaciones) 
-            WHERE via_id = $4 RETURNING *
+                via_observaciones = COALESCE($3, via_observaciones),
+                via_fk_puerto = COALESCE($4, via_fk_puerto)
+            WHERE via_id = $5 RETURNING *
         `;
 
-        const actualizar = await client.query(query, [via_estatus, via_fecha_llegada || null, via_observaciones || null, id]);
+        const actualizar = await client.query(query, [via_estatus, via_fecha_llegada || null, via_observaciones || null, via_fk_puerto || null, id]);
 
         if (actualizar.rows.length === 0) {
             await client.query('ROLLBACK');

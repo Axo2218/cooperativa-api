@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, LayersControl, Circle, Rectangle, LayerGroup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, LayersControl, Circle, Rectangle, LayerGroup, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import api from '../services/api';
-import { Ship, Home, Anchor, Map as MapIcon, Loader2, Info, Users, Navigation } from 'lucide-react';
+import { Ship, Home, Anchor, Map as MapIcon, Loader2, Info, Users, Navigation, RefreshCw } from 'lucide-react';
 
 // Corregir el problema de los iconos de Leaflet en React
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+import icon from 'leaflet/dist/images/marker-icon.png?url';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png?url';
 
 let DefaultIcon = L.icon({
     iconUrl: icon,
@@ -44,6 +44,22 @@ const icons = {
     }),
     instalacion: createCustomIcon('#f59e0b'), // Amber
     zona: createCustomIcon('#ef4444')        // Red
+};
+
+// Definición de formas geográficas para las zonas (Polígonos orgánicos que siguen la costa)
+const ZONE_SHAPES = {
+    1: [ // Litoral de Frontera - TAB-01
+        [18.53, -92.68], [18.65, -92.55], [18.85, -92.35], [19.15, -92.55], [19.25, -92.85], [19.05, -93.05], [18.75, -92.95], [18.58, -92.75]
+    ],
+    2: [ // Sonda de Campeche - CAM-05
+        [19.15, -92.55], [19.45, -92.15], [20.15, -92.45], [20.45, -91.85], [19.85, -91.25], [19.25, -91.65], [19.15, -92.05]
+    ],
+    3: [ // Barra de Tupilco - TAB-02
+        [18.35, -93.65], [18.42, -93.45], [18.55, -93.25], [18.85, -93.15], [19.05, -93.45], [18.85, -93.75], [18.55, -93.85]
+    ],
+    4: [ // Dos Bocas - Litoral - TAB-03
+        [18.45, -93.25], [18.52, -93.05], [18.65, -92.85], [19.05, -92.75], [19.15, -93.05], [18.85, -93.35], [18.55, -93.45]
+    ]
 };
 
 const customMapStyles = `
@@ -92,34 +108,42 @@ const Geolocalizacion = () => {
         viajesActivos: []
     });
     const [loading, setLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [dbConnectionError, setDbConnectionError] = useState(false);
     const [mapCenter] = useState([18.5, -93.0]); // Centro aproximado de la región
     const [zoom] = useState(8);
 
+    const fetchAllData = async (silent = false) => {
+        if (!silent) setLoading(true);
+        else setIsRefreshing(true);
+        
+        try {
+            const [emb, coop, inst, zonas, viajes] = await Promise.all([
+                api.get('/embarcaciones'),
+                api.get('/cooperativas'),
+                api.get('/instalaciones'),
+                api.get('/zonas'),
+                api.get('/viaje')
+            ]);
+
+            setData({
+                embarcaciones: emb.data,
+                cooperativas: coop.data,
+                instalaciones: inst.data,
+                zonas: zonas.data,
+                viajesActivos: (viajes.data || []).filter(v => ['En Curso', 'En Puerto'].includes(v.via_estatus))
+            });
+            setDbConnectionError(false);
+        } catch (error) {
+            console.error('Error al cargar datos de geolocalización:', error);
+            setDbConnectionError(true);
+        } finally {
+            setLoading(false);
+            setIsRefreshing(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchAllData = async () => {
-            try {
-                const [emb, coop, inst, zonas, viajes] = await Promise.all([
-                    api.get('/embarcaciones'),
-                    api.get('/cooperativas'),
-                    api.get('/instalaciones'),
-                    api.get('/zonas'),
-                    api.get('/viaje')
-                ]);
-
-                setData({
-                    embarcaciones: emb.data,
-                    cooperativas: coop.data,
-                    instalaciones: inst.data,
-                    zonas: zonas.data,
-                    viajesActivos: (viajes.data || []).filter(v => v.via_estatus === 'Navegando')
-                });
-            } catch (error) {
-                console.error('Error al cargar datos de geolocalización:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchAllData();
     }, []);
 
@@ -133,33 +157,58 @@ const Geolocalizacion = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="p-8 max-w-[1600px] mx-auto min-h-screen">
             <style>{customMapStyles}</style>
-            <div className="flex justify-between items-end">
+            
+            {/* CABECERA */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <div>
-                    <h1 className="text-4xl font-black text-white mb-2 tracking-tight">
+                    <h1 className="text-5xl font-black text-white tracking-tighter">
                         Inteligencia <span className="text-emerald-500">Geoespacial</span>
                     </h1>
-                    <p className="text-zinc-400">Monitoreo dinámico de flota y activos estratégicos.</p>
+                    <p className="text-zinc-500 font-medium mt-2 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Monitoreo dinámico de flota y activos estratégicos.
+                    </p>
                 </div>
-                <div className="flex gap-4 bg-zinc-900/50 p-3 rounded-xl border border-zinc-800">
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                        <span className="text-[10px] font-bold text-zinc-300 uppercase">Barcos</span>
+
+                <button 
+                    onClick={() => fetchAllData(true)}
+                    disabled={isRefreshing}
+                    className={`bg-zinc-950/50 border p-5 rounded-[2rem] flex flex-col items-start gap-1.5 transition-all group shadow-xl hover:shadow-2xl ${
+                        dbConnectionError ? 'border-red-500/50 hover:border-red-500 shadow-red-500/5' : 'border-zinc-800 hover:border-emerald-500/40 shadow-emerald-500/5'
+                    }`}
+                >
+                    <p className={`text-[10px] font-black uppercase tracking-[0.25em] ml-1 ${
+                        dbConnectionError ? 'text-red-500' : 'text-emerald-500'
+                    }`}>Estado del Sistema</p>
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <div className={`w-2.5 h-2.5 rounded-full ${
+                                isRefreshing ? 'bg-amber-500 animate-pulse' : 
+                                dbConnectionError ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]' : 
+                                'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
+                            }`}></div>
+                            {(isRefreshing || dbConnectionError) && (
+                                <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${
+                                    dbConnectionError ? 'bg-red-500' : 'bg-amber-500'
+                                }`}></div>
+                            )}
+                        </div>
+                        <span className="text-white font-black text-sm tracking-tight">
+                            {isRefreshing ? 'Sincronizando...' : 
+                             dbConnectionError ? 'Error de Conexión DB' : 
+                             'Sincronizado con DB'}
+                        </span>
+                        <div className={`p-2 rounded-xl bg-zinc-900 group-hover:bg-zinc-800 transition-colors ${
+                            isRefreshing ? 'text-amber-500' : 
+                            dbConnectionError ? 'text-red-500' : 
+                            'text-zinc-500 group-hover:text-emerald-500'
+                        }`}>
+                            <RefreshCw size={18} className={`${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                        <span className="text-[10px] font-bold text-zinc-300 uppercase">Coops</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                        <span className="text-[10px] font-bold text-zinc-300 uppercase">Puertos/Bodegas</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                        <span className="text-[10px] font-bold text-zinc-300 uppercase">Zonas Pesca</span>
-                    </div>
-                </div>
+                </button>
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6">
@@ -174,7 +223,7 @@ const Geolocalizacion = () => {
                         <LayersControl position="topright" collapsed={false}>
                             <LayersControl.Overlay checked name="Flota en Puerto">
                                 <LayerGroup>
-                                    {data.embarcaciones.filter(e => e.emb_latitud && e.emb_longitud && e.emb_estatus !== 'Navegando').map(emb => (
+                                    {data.embarcaciones.filter(e => e.emb_latitud && e.emb_longitud && e.emb_estatus !== 'En Curso').map(emb => (
                                         <Marker 
                                             key={`emb-${emb.emb_id}`} 
                                             position={[parseFloat(emb.emb_latitud), parseFloat(emb.emb_longitud)]}
@@ -214,6 +263,8 @@ const Geolocalizacion = () => {
                                                     </div>
                                                     <div className="space-y-1 text-[11px]">
                                                         <p><span className="text-zinc-500 uppercase font-black mr-1">Capitán:</span> {viaje.capitan}</p>
+                                                        <p><span className="text-zinc-500 uppercase font-black mr-1">Estatus:</span> <span className={viaje.via_estatus === 'En Curso' ? 'text-emerald-500' : 'text-amber-500'}>{viaje.via_estatus}</span></p>
+                                                        {viaje.via_estatus === 'En Puerto' && <p><span className="text-zinc-500 uppercase font-black mr-1">Puerto:</span> {viaje.puerto_arribo}</p>}
                                                         <p><span className="text-zinc-500 uppercase font-black mr-1">Posición:</span> {parseFloat(viaje.emb_latitud).toFixed(4)}, {parseFloat(viaje.emb_longitud).toFixed(4)}</p>
                                                     </div>
                                                 </div>
@@ -268,15 +319,28 @@ const Geolocalizacion = () => {
 
                             <LayersControl.Overlay checked name="Zonas y Cuadrantes">
                                 <LayerGroup>
-                                    {data.zonas.filter(z => z.zona_lat_min && z.zona_lon_min).map(zona => (
+                                    {data.zonas.map(zona => (
                                         <React.Fragment key={`zona-${zona.zona_id}`}>
-                                            <Rectangle 
-                                                bounds={[
-                                                    [parseFloat(zona.zona_lat_min), parseFloat(zona.zona_lon_min)],
-                                                    [parseFloat(zona.zona_lat_max), parseFloat(zona.zona_lon_max)]
-                                                ]}
-                                                pathOptions={{ fillColor: '#ef4444', color: '#ef4444', fillOpacity: 0.1, weight: 1 }}
-                                            />
+                                            {ZONE_SHAPES[zona.zona_id] ? (
+                                                <Polygon 
+                                                    positions={ZONE_SHAPES[zona.zona_id]}
+                                                    pathOptions={{ 
+                                                        fillColor: '#ef4444', 
+                                                        color: '#ef4444', 
+                                                        fillOpacity: 0.15, 
+                                                        weight: 2,
+                                                        dashArray: '5, 10'
+                                                    }}
+                                                />
+                                            ) : zona.zona_lat_min && (
+                                                <Rectangle 
+                                                    bounds={[
+                                                        [parseFloat(zona.zona_lat_min), parseFloat(zona.zona_lon_min)],
+                                                        [parseFloat(zona.zona_lat_max), parseFloat(zona.zona_lon_max)]
+                                                    ]}
+                                                    pathOptions={{ fillColor: '#ef4444', color: '#ef4444', fillOpacity: 0.1, weight: 1 }}
+                                                />
+                                            )}
                                             {zona.zona_latitud && zona.zona_longitud && (
                                                 <Marker 
                                                     position={[parseFloat(zona.zona_latitud), parseFloat(zona.zona_longitud)]}
@@ -310,22 +374,22 @@ const Geolocalizacion = () => {
                                 Radar Activo
                             </h2>
                             <span className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-3 py-1 rounded-full border border-emerald-500/20 uppercase tracking-[0.2em]">
-                                {data.viajesActivos.length} en Mar
+                                {data.viajesActivos.length} Activos
                             </span>
                         </div>
 
                         <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar space-y-4">
                             {data.viajesActivos.length > 0 ? data.viajesActivos.map(viaje => (
-                                <div key={`side-${viaje.via_id}`} className="p-5 bg-zinc-800/40 border border-zinc-800/50 rounded-2xl hover:border-emerald-500/50 transition-all group relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-1 h-full bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div key={`side-${viaje.via_id}`} className={`p-5 bg-zinc-800/40 border rounded-2xl transition-all group relative overflow-hidden ${viaje.via_estatus === 'En Curso' ? 'border-zinc-800/50 hover:border-emerald-500/50' : 'border-amber-500/30 hover:border-amber-500/50'}`}>
+                                    <div className={`absolute top-0 right-0 w-1 h-full transition-opacity opacity-0 group-hover:opacity-100 ${viaje.via_estatus === 'En Curso' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
                                     
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="font-black text-white text-lg group-hover:text-emerald-400 transition-colors uppercase tracking-tight">{viaje.barco}</h3>
                                             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">{viaje.emb_matricula}</p>
                                         </div>
-                                        <div className="bg-emerald-500/20 p-2 rounded-lg">
-                                            <Ship className="text-emerald-500" size={20} />
+                                        <div className={`p-2 rounded-lg ${viaje.via_estatus === 'En Curso' ? 'bg-emerald-500/20' : 'bg-amber-500/20'}`}>
+                                            <Ship className={viaje.via_estatus === 'En Curso' ? 'text-emerald-500' : 'text-amber-500'} size={20} />
                                         </div>
                                     </div>
 
@@ -353,10 +417,14 @@ const Geolocalizacion = () => {
 
                                     <div className="mt-4 flex items-center justify-between">
                                         <div className="flex items-center gap-1.5">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                                            <span className="text-[10px] font-black text-emerald-500/80 uppercase tracking-widest">Transmitiendo</span>
+                                            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${viaje.via_estatus === 'En Curso' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${viaje.via_estatus === 'En Curso' ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>
+                                                {viaje.via_estatus === 'En Curso' ? 'Transmitiendo' : 'En Puerto'}
+                                            </span>
                                         </div>
-                                        <span className="text-[10px] text-zinc-600 font-bold">ZONA: {viaje.zona_nombre}</span>
+                                        <span className="text-[10px] text-zinc-600 font-bold uppercase">
+                                            {viaje.via_estatus === 'En Curso' ? `ZONA: ${viaje.zona_nombre}` : `ARRIBO: ${viaje.puerto_arribo || 'N/A'}`}
+                                        </span>
                                     </div>
                                 </div>
                             )) : (

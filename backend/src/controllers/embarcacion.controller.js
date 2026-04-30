@@ -112,6 +112,25 @@ const updateEmbarcacion = async (req, res) => {
     }
 };
 
+// Actualizar coordenadas de la embarcación (GPS manual)
+const actualizarCoordenadas = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { emb_latitud, emb_longitud } = req.body;
+
+        const result = await pool.query(
+            `UPDATE embarcacion SET emb_latitud = $1, emb_longitud = $2 WHERE emb_id = $3 RETURNING *`,
+            [emb_latitud, emb_longitud, id]
+        );
+
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Embarcación no encontrada' });
+        res.json({ mensaje: 'Coordenadas actualizadas correctamente', embarcacion: result.rows[0] });
+    } catch (error) {
+        console.error('Error al actualizar coordenadas:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+};
+
 // Eliminar una embarcacion
 const deleteEmbarcacion = async (req, res) => {
     try {
@@ -133,5 +152,6 @@ module.exports = {
     getEmbarcacionById,
     createEmbarcacion,
     updateEmbarcacion,
-    deleteEmbarcacion
+    deleteEmbarcacion,
+    actualizarCoordenadas
 };

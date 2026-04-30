@@ -4,7 +4,7 @@ const getDashboardStats = async (req, res) => {
     try {
         // 1. Conteos básicos
         const fleetCount = await pool.query('SELECT COUNT(*) FROM embarcacion');
-        const activeCount = await pool.query("SELECT COUNT(*) FROM viaje WHERE via_estatus IN ('En Curso', 'Activo') AND via_archivado = false");
+        const activeCount = await pool.query("SELECT COUNT(*) FROM viaje WHERE via_estatus IN ('En Curso', 'Activo', 'En Puerto') AND via_archivado = false");
         const preparationCount = await pool.query("SELECT COUNT(*) FROM viaje WHERE via_estatus IN ('En Preparación', 'Pendiente') AND via_archivado = false");
         const totalKilos = await pool.query('SELECT SUM(det_cap_kilogramos) FROM viaje_detalle_captura');
         const totalVentas = await pool.query('SELECT SUM(ven_total) FROM venta');
@@ -17,7 +17,7 @@ const getDashboardStats = async (req, res) => {
             SELECT v.via_id, e.emb_nombre, v.via_estatus 
             FROM viaje v 
             JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id 
-            WHERE v.via_estatus IN ('En Curso', 'Activo') AND v.via_archivado = false
+            WHERE v.via_estatus IN ('En Curso', 'Activo', 'En Puerto') AND v.via_archivado = false
             ORDER BY v.via_id DESC
         `);
 

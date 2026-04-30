@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../services/api';
-import { Plus, Edit2, Trash2, X, AlertTriangle, Users, CheckCircle, XCircle, ArrowUpDown, Filter } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, Users, CheckCircle, XCircle, ArrowUpDown, Filter, Eye, Calendar, DollarSign, Briefcase, Ship, Loader2, Home } from 'lucide-react';
 
 const PersonalCRUD = () => {
   const [personal, setPersonal] = useState([]);
   const [roles, setRoles] = useState([]);
   const [cooperativas, setCooperativas] = useState([]);
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
+   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [currentRegistro, setCurrentRegistro] = useState(null);
+  const [detailsData, setDetailsData] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
   // Estados para ordenamiento
@@ -132,10 +135,31 @@ const PersonalCRUD = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const closeDeleteModal = () => {
+   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
     setCurrentRegistro(null);
     setErrorMsg('');
+  };
+
+  const openDetailsModal = async (registro) => {
+    setCurrentRegistro(registro);
+    setIsLoadingDetails(true);
+    setIsDetailsModalOpen(true);
+    try {
+      const { data } = await axios.get(`/personal/detalles/${registro.per_id}`);
+      setDetailsData(data);
+    } catch (error) {
+      console.error('Error al cargar detalles:', error);
+      setErrorMsg('No se pudieron cargar los detalles del personal.');
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const closeDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setDetailsData(null);
+    setCurrentRegistro(null);
   };
 
   const handleSubmit = async (e) => {
@@ -324,8 +348,15 @@ const PersonalCRUD = () => {
                         <span className="inline-flex items-center gap-1 text-red-400"><XCircle size={16}/> Inactivo</span>
                       )}
                     </td>
-                    <td className="p-4">
+                     <td className="p-4">
                       <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => openDetailsModal(reg)}
+                          className="text-zinc-400 hover:text-blue-400 transition-colors p-1"
+                          title="Ver Detalles"
+                        >
+                          <Eye size={18} />
+                        </button>
                         <button
                           onClick={() => openModal(reg)}
                           className="text-zinc-400 hover:text-emerald-500 transition-colors p-1"
@@ -478,6 +509,209 @@ const PersonalCRUD = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+       {/* Modal Detalles Completos (Expediente Digital) */}
+      {isDetailsModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-start justify-center z-50 p-4 overflow-y-auto pt-10">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-5xl shadow-2xl overflow-hidden mb-12 animate-in zoom-in-95 fade-in duration-300 ring-1 ring-white/5">
+            
+            {/* Header del Expediente */}
+            <div className="relative p-8 bg-gradient-to-r from-zinc-950 to-zinc-900 border-b border-zinc-800">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="flex items-center gap-6">
+                  <div className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                    <Users size={36} strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black text-white tracking-tighter uppercase">Expediente de <span className="text-blue-500">Personal</span></h2>
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${detailsData?.personal.per_estatus ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-red-500'}`}></span>
+                        <p className="text-[10px] text-zinc-300 uppercase font-black tracking-widest">{detailsData?.personal.per_estatus ? 'Perfil Activo' : 'Perfil Inactivo'}</p>
+                      </div>
+                      <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
+                      <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.3em]">Nómina Integrada</p>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={closeDetailsModal} 
+                  className="text-zinc-500 hover:text-white transition-all bg-zinc-800 hover:bg-zinc-700 p-3 rounded-2xl group"
+                >
+                  <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row min-h-[600px]">
+              
+              {/* Lateral Izquierdo: Perfil y Estadísticas */}
+              <div className="lg:w-80 bg-zinc-950/30 border-r border-zinc-800/50 p-8 space-y-8">
+                
+                {/* Info de Identidad */}
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Nombre del Colaborador</label>
+                    <p className="text-xl font-bold text-white leading-tight">{detailsData?.personal.per_nombre} {detailsData?.personal.per_apellidos}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
+                        <Briefcase size={16} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-zinc-500 uppercase font-bold">Puesto / Rol</p>
+                        <p className="text-xs font-black text-white uppercase">{detailsData?.personal.rol_nombre}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+                        <Home size={16} />
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-zinc-500 uppercase font-bold">Cooperativa Origen</p>
+                        <p className="text-xs font-bold text-zinc-300">{detailsData?.personal.coop_nombre}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contacto y Emergencia */}
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-zinc-800 pb-2">Información de Contacto</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[9px] text-zinc-600 uppercase font-bold">Teléfono Personal</p>
+                      <p className="text-xs text-zinc-300 font-bold">{detailsData?.personal.per_telefono || 'No disponible'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-zinc-600 uppercase font-bold">Contacto de Emergencia</p>
+                      <p className="text-xs text-zinc-300 font-medium leading-relaxed">{detailsData?.personal.per_contacto_emergencia || 'No registrado'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumen Financiero Destacado */}
+                <div className="bg-gradient-to-br from-emerald-500/10 to-transparent p-6 rounded-[2rem] border border-emerald-500/20 shadow-xl shadow-emerald-500/[0.02]">
+                  <div className="flex items-center gap-2 mb-3">
+                    <DollarSign size={14} className="text-emerald-500" />
+                    <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Saldo Acumulado</h3>
+                  </div>
+                  <p className="text-4xl font-black text-white tracking-tighter">
+                    ${parseFloat(detailsData?.estadisticas.total_acumulado || 0).toLocaleString()}
+                  </p>
+                  <div className="mt-4 pt-4 border-t border-emerald-500/10 flex justify-between items-center text-xs">
+                    <span className="text-zinc-500 font-medium">Viajes Liquidados</span>
+                    <span className="text-white font-black bg-zinc-900 px-2.5 py-1 rounded-lg">{detailsData?.estadisticas.viajes_pagados || 0}</span>
+                  </div>
+                </div>
+
+                {/* Info Legal/Socio */}
+                <div className="space-y-4 pt-4">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="bg-zinc-900/30 p-4 rounded-2xl border border-zinc-800 space-y-3">
+                      <div>
+                        <p className="text-[9px] text-zinc-600 uppercase font-bold">CURP</p>
+                        <p className="text-[11px] font-mono text-zinc-300 tracking-tighter">{detailsData?.personal.per_curp || 'NO REGISTRADO'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-zinc-600 uppercase font-bold">Número de Seguridad Social (NSS)</p>
+                        <p className="text-[11px] font-mono text-zinc-300 tracking-tighter">{detailsData?.personal.per_nss || 'NO REGISTRADO'}</p>
+                      </div>
+                    </div>
+                    {detailsData?.personal.per_es_socio && (
+                      <div className="bg-blue-600/5 p-4 rounded-2xl border border-blue-500/20">
+                        <p className="text-[9px] text-blue-400 uppercase font-black mb-1">Status de Socio</p>
+                        <p className="text-xs font-bold text-white"># {detailsData?.personal.per_numero_socio}</p>
+                        <p className="text-[9px] text-zinc-500 mt-1">Cert: {detailsData?.personal.per_certificado_aportacion || 'N/A'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Área Principal: Historial Detallado */}
+              <div className="flex-1 p-8 bg-zinc-900/50">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-black text-white flex items-center gap-4 tracking-tight">
+                    <div className="w-1.5 h-6 bg-blue-500 rounded-full"></div>
+                    Cronología de Actividades
+                  </h3>
+                  <div className="text-[10px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-950 px-4 py-2 rounded-full border border-zinc-800">
+                    Últimas 50 Bitácoras
+                  </div>
+                </div>
+
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4 custom-scrollbar scroll-smooth">
+                  {isLoadingDetails ? (
+                    <div className="h-64 flex flex-col items-center justify-center gap-4">
+                      <Loader2 className="animate-spin text-blue-500" size={48} />
+                      <p className="text-zinc-500 font-bold tracking-widest uppercase text-xs">Consultando Archivos...</p>
+                    </div>
+                  ) : detailsData?.viajes.length > 0 ? detailsData.viajes.map((viaje) => (
+                    <div key={viaje.via_id} className="group bg-zinc-950 p-6 rounded-[2rem] border border-zinc-800 hover:border-blue-500/40 hover:bg-zinc-900 transition-all duration-300 relative">
+                      <div className="flex flex-wrap justify-between items-center gap-4">
+                        <div className="flex items-center gap-5">
+                          <div className="w-14 h-14 bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-600 group-hover:text-blue-500 group-hover:bg-blue-500/5 transition-all duration-300">
+                            <Ship size={24} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <h4 className="text-lg font-black text-white tracking-tight">Viaje #{viaje.via_id}</h4>
+                              <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-tighter border ${
+                                viaje.via_estatus === 'Completado' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                              }`}>
+                                {viaje.via_estatus}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 mt-1.5">
+                              <span className="text-[11px] text-zinc-500 flex items-center gap-1.5 font-bold">
+                                <Calendar size={12} className="text-zinc-700" />
+                                {new Date(viaje.via_fecha_salida).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}
+                              </span>
+                              <div className="flex items-center gap-1.5 bg-zinc-900 px-3 py-1 rounded-lg border border-zinc-800">
+                                <Briefcase size={10} className="text-blue-500" />
+                                <span className="text-[10px] text-zinc-400 font-black uppercase tracking-widest">{viaje.rol_en_viaje}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 text-right min-w-[140px] group-hover:bg-zinc-950 transition-colors">
+                          <p className="text-[9px] text-zinc-500 uppercase font-black tracking-widest mb-1.5">Remuneración</p>
+                          <p className="text-xl font-black text-white group-hover:text-emerald-500 transition-colors">
+                            {viaje.pag_monto_recibido ? `$${parseFloat(viaje.pag_monto_recibido).toLocaleString()}` : <span className="text-zinc-700 font-normal italic opacity-50">Pendiente</span>}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="py-24 text-center border-2 border-dashed border-zinc-800 rounded-[3rem]">
+                      <div className="w-20 h-20 bg-zinc-950 rounded-full flex items-center justify-center mx-auto mb-6 text-zinc-800">
+                        <Users size={32} />
+                      </div>
+                      <h4 className="text-white font-bold text-lg mb-2">Sin actividad histórica</h4>
+                      <p className="text-zinc-600 max-w-xs mx-auto text-sm leading-relaxed">Este colaborador no ha participado en bitácoras de viaje registradas en el sistema hasta el momento.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer con Acción */}
+            <div className="p-8 bg-zinc-950 border-t border-zinc-800 flex justify-end">
+              <button 
+                onClick={closeDetailsModal} 
+                className="bg-zinc-800 hover:bg-zinc-700 text-white font-black px-12 py-4 rounded-2xl transition-all active:scale-95 shadow-xl uppercase text-xs tracking-widest"
+              >
+                Cerrar Expediente
+              </button>
+            </div>
           </div>
         </div>
       )}
