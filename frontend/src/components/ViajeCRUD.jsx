@@ -252,8 +252,8 @@ const ViajeCRUD = () => {
   const personalOcupadoTotal = new Set([...capitanesOcupados, ...tripulantesOcupados]);
 
   return (
-    <div className="p-6 bg-zinc-900 min-h-screen text-zinc-400 font-sans">
-      <div className="max-w-7xl mx-auto">
+    <div className="text-zinc-400 font-sans">
+      <div>
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <Compass className="text-white" size={28} />

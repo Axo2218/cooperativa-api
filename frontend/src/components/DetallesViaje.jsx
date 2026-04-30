@@ -427,8 +427,8 @@ const DetallesViaje = ({ viaje, volver }) => {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white p-8">
-            <div className="max-w-7xl mx-auto bg-zinc-900 rounded-3xl border border-zinc-800 p-10 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="text-white">
+            <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-10 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
 
             {/* CABECERA (Se mantiene igual) */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-zinc-800 pb-8">

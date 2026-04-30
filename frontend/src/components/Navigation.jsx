@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, Ship, Database, DollarSign, Users, ShieldAlert, Settings, Anchor } from 'lucide-react';
+import { ChevronDown, Ship, Database, DollarSign, Users, ShieldAlert, Settings, Anchor, Map } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();
@@ -17,7 +17,8 @@ const Navigation = () => {
         { path: '/operaciones/tripulacion', label: 'Enrolamiento (Tripulación)' },
         { path: '/operaciones/capturas', label: 'Bitácora de Capturas' },
         { path: '/operaciones/gastos', label: 'Gastos Operativos' },
-        { path: '/operaciones/historico', label: 'Histórico de Pesca' }
+        { path: '/operaciones/historico', label: 'Histórico de Pesca' },
+        { path: '/geolocalizacion', label: 'Geolocalización (Mapa)' }
       ]
     },
     {
@@ -76,9 +77,11 @@ const Navigation = () => {
   useEffect(() => {
     const updateIndicator = () => {
       let activeId = '';
-      
+
       if (location.pathname === '/dashboard' || location.pathname.startsWith('/viajes/')) {
         activeId = 'dashboard';
+      } else if (location.pathname === '/geolocalizacion') {
+        activeId = 'geolocalizacion';
       } else if (location.pathname === '/alertas') {
         activeId = 'alertas';
       } else {
@@ -92,7 +95,7 @@ const Navigation = () => {
       if (activeElement && container) {
         const activeRect = activeElement.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
-        
+
         setIndicatorStyle({
           left: activeRect.left - containerRect.left,
           width: activeRect.width,
@@ -106,7 +109,7 @@ const Navigation = () => {
     // Ejecutar inmediatamente y tras un breve delay por si el DOM cambia
     updateIndicator();
     const timer = setTimeout(updateIndicator, 100);
-    
+
     window.addEventListener('resize', updateIndicator);
     return () => {
       window.removeEventListener('resize', updateIndicator);
@@ -125,14 +128,14 @@ const Navigation = () => {
 
         {/* CENTER MENUS */}
         <div ref={containerRef} className="flex gap-2 text-sm font-medium relative items-center h-10">
-          
+
           {/* Sliding Indicator */}
-          <div 
+          <div
             className="absolute bottom-[-17px] h-[3px] bg-emerald-500 rounded-full transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) shadow-[0_0_12px_rgba(16,185,129,0.5)]"
-            style={{ 
-              left: `${indicatorStyle.left}px`, 
+            style={{
+              left: `${indicatorStyle.left}px`,
               width: `${indicatorStyle.width}px`,
-              opacity: indicatorStyle.opacity 
+              opacity: indicatorStyle.opacity
             }}
           />
 
@@ -146,7 +149,7 @@ const Navigation = () => {
           >
             Dashboard
           </Link>
-
+          
           {/* Dropdowns */}
           {navGroups.map((group, idx) => {
             const isGroupActive = group.routes.some(r => location.pathname === r.path);
@@ -194,7 +197,7 @@ const Navigation = () => {
 
         {/* USER PROFILE */}
         <div className="text-sm font-medium text-zinc-400 flex items-center gap-3">
-          <span className="hidden md:inline">Capitán</span>
+          <span className="hidden md:inline">Super Admin</span>
           <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center border border-emerald-500/30">
             <Settings size={16} />
           </div>

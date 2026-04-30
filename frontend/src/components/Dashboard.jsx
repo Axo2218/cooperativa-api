@@ -110,7 +110,7 @@ const Dashboard = () => {
 
 
   return (
-    <div className="max-w-[1600px] mx-auto px-6 py-8 w-full">
+    <div className="w-full">
       <div className="mb-10 mt-2 flex justify-between items-end">
         <div>
           <h1 className="text-4xl font-black text-white mb-2 tracking-tight">

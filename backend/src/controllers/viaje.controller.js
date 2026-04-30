@@ -12,6 +12,8 @@ const obtenerViajes = async (req, res) => {
             e.emb_nombre AS barco, 
             e.emb_capacidad_personal AS capacidad, 
             e.emb_matricula,
+            e.emb_latitud,
+            e.emb_longitud,
             p.per_nombre || ' ' || p.per_apellidos AS capitan,
             z.zona_nombre
         FROM viaje v
