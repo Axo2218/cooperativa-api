@@ -186,23 +186,23 @@ const ViajePersonalCRUD = () => {
                 {tripulaciones.map((reg) => (
                   <tr key={reg.via_per_id} className="hover:bg-zinc-800/50 transition-colors">
                     <td className="p-4 text-zinc-500 font-mono">#{reg.via_per_id}</td>
-                    <td className="p-4 text-zinc-300">
-                      Viaje #{reg.via_per_fk_viaje}
-                      <span className={`block text-xs font-medium mt-1 ${getEstatusColor(reg.via_estatus)}`}>
+                    <td className="p-4 text-zinc-400">
+                      <div className="font-medium text-zinc-300">Viaje #{reg.via_per_fk_viaje}</div>
+                      <span className={`block text-[10px] font-bold uppercase mt-1 ${getEstatusColor(reg.via_estatus)}`}>
                         {reg.via_estatus || 'Sin Estatus'}
                       </span>
                     </td>
                     <td className="p-4 text-white font-medium">
                       {reg.personal_nombre || <span className="text-zinc-600 italic">Desconocido</span>}
                     </td>
-                    <td className="p-4 text-zinc-300">
-                      <span className="inline-flex items-center gap-1">
+                    <td className="p-4 text-zinc-400">
+                      <span className="inline-flex items-center gap-1.5">
                         <Anchor size={14} className="text-emerald-500" />
                         {reg.rol_nombre || 'Sin Rol'}
                       </span>
                     </td>
                     <td className="p-4 text-center">
-                      <span className="inline-flex items-center justify-center bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1 rounded-full font-mono text-sm font-bold">
+                      <span className="inline-flex items-center justify-center bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1 rounded-full font-mono text-xs font-bold">
                         {reg.rol_puntos_reparto || 0} pts
                       </span>
                     </td>
@@ -241,7 +241,7 @@ const ViajePersonalCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -351,7 +351,7 @@ const ViajePersonalCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

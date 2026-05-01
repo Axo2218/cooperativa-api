@@ -181,15 +181,15 @@ const ViajeDetalleCapturaCRUD = () => {
                 {capturas.map((reg) => (
                   <tr key={reg.det_cap_id} className="hover:bg-zinc-800/50 transition-colors">
                     <td className="p-4 text-zinc-500 font-mono">#{reg.det_cap_id}</td>
-                    <td className="p-4 text-zinc-300">
-                      Viaje #{reg.det_cap_fk_viaje}
-                      <span className={`block text-xs font-medium mt-1 ${getEstatusColor(reg.via_estatus)}`}>
+                    <td className="p-4 text-zinc-400">
+                      <div className="font-medium text-zinc-300">Viaje #{reg.det_cap_fk_viaje}</div>
+                      <span className={`block text-[10px] font-bold uppercase mt-1 ${getEstatusColor(reg.via_estatus)}`}>
                         {reg.via_estatus || 'Sin Estatus'}
                       </span>
                     </td>
                     <td className="p-4 text-white font-medium">{reg.esp_nombre_comun || <span className="text-zinc-600 italic">Desconocida</span>}</td>
-                    <td className="p-4 text-right font-mono text-blue-400">{reg.det_cap_kilogramos} kg</td>
-                    <td className="p-4 text-right font-mono">{formatCurrency(reg.det_cap_precio_pactado)}</td>
+                    <td className="p-4 text-right font-mono text-blue-400">{reg.det_cap_kilogramos} <span className="text-[10px] text-zinc-500">kg</span></td>
+                    <td className="p-4 text-right font-mono text-zinc-400 text-sm">{formatCurrency(reg.det_cap_precio_pactado)}</td>
                     <td className="p-4 text-right font-mono text-white font-bold bg-emerald-500/5">
                       {formatCurrency(reg.det_cap_subtotal)}
                     </td>
@@ -228,7 +228,7 @@ const ViajeDetalleCapturaCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -351,7 +351,7 @@ const ViajeDetalleCapturaCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

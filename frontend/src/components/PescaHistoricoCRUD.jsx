@@ -185,24 +185,24 @@ const PescaHistoricoCRUD = () => {
                       <div className="text-white font-bold">{reg.emb_nombre}</div>
                       <div className="text-[10px] text-zinc-500 font-mono uppercase">{reg.emb_matricula}</div>
                     </td>
-                    <td className="p-4 text-xs">
+                    <td className="p-4 text-[10px] uppercase font-bold">
                       <div className="text-zinc-300">Salida: {new Date(reg.via_fecha_salida).toLocaleDateString()}</div>
-                      <div className="text-emerald-500 font-medium">Llegada: {new Date(reg.via_fecha_llegada).toLocaleDateString()}</div>
+                      <div className="text-emerald-500 mt-1">Llegada: {new Date(reg.via_fecha_llegada).toLocaleDateString()}</div>
                     </td>
                     <td className="p-4 max-w-[200px]">
-                      <div className="text-emerald-400 font-bold text-sm">{reg.capitan_nombre}</div>
-                      <div className="text-[10px] text-zinc-500 line-clamp-1 italic">{reg.tripulacion || 'Sin tripulación extra'}</div>
+                      <div className="text-emerald-400 font-bold text-sm tracking-tight">{reg.capitan_nombre}</div>
+                      <div className="text-[10px] text-zinc-500 line-clamp-1 italic mt-1">{reg.tripulacion || 'Sin tripulación extra'}</div>
                     </td>
                     <td className="p-4 max-w-[250px]">
-                      <div className="text-xs text-zinc-300 leading-relaxed">
-                        {reg.detalle_pesca || <span className="text-zinc-600 italic">Sin capturas registradas</span>}
+                      <div className="text-xs text-zinc-400 leading-relaxed italic">
+                        {reg.detalle_pesca || <span className="text-zinc-700">Sin capturas registradas</span>}
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="text-white font-black">{Number(reg.via_total_kg).toLocaleString()} <span className="text-[10px] text-zinc-500">KG</span></div>
+                      <div className="text-white font-black font-mono">{Number(reg.via_total_kg).toLocaleString()} <span className="text-[10px] text-zinc-500">KG</span></div>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="text-emerald-500 font-black text-lg">{formatCurrency(reg.via_total_ingresos)}</div>
+                      <div className="text-emerald-500 font-black text-lg font-mono">{formatCurrency(reg.via_total_ingresos)}</div>
                     </td>
                   </tr>
                 ))}
@@ -221,7 +221,7 @@ const PescaHistoricoCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -369,7 +369,7 @@ const PescaHistoricoCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

@@ -198,7 +198,7 @@ const EmbarcacionCRUD = () => {
               <tbody className="divide-y divide-zinc-800">
                 {embarcaciones.map((emb) => (
                   <tr key={emb.emb_id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="p-4 text-zinc-500">#{emb.emb_id}</td>
+                    <td className="p-4 text-zinc-500 font-mono">#{emb.emb_id}</td>
                     <td className="p-4 font-mono text-white">{emb.emb_matricula}</td>
                     <td className="p-4 font-medium text-white">{emb.emb_nombre}</td>
                     <td className="p-4">
@@ -206,8 +206,8 @@ const EmbarcacionCRUD = () => {
                         {emb.categoria || 'Sin Cat.'}
                       </span>
                     </td>
-                    <td className="p-4">{emb.coop_nombre || `ID: ${emb.emb_fk_cooperativa}`}</td>
-                    <td className="p-4">{emb.emb_capacidad_carga ? `${emb.emb_capacidad_carga} kg` : 'N/A'}</td>
+                    <td className="p-4 text-sm text-zinc-400">{emb.coop_nombre || `ID: ${emb.emb_fk_cooperativa}`}</td>
+                    <td className="p-4 text-sm text-zinc-400">{emb.emb_capacidad_carga ? `${emb.emb_capacidad_carga} kg` : 'N/A'}</td>
                     <td className="p-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoStyle(emb.emb_estatus)}`}>
                         {emb.emb_estatus}
@@ -248,7 +248,7 @@ const EmbarcacionCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -418,7 +418,7 @@ const EmbarcacionCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

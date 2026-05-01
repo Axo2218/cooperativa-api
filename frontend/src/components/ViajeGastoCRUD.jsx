@@ -184,9 +184,9 @@ const ViajeGastoCRUD = () => {
                 {gastos.map((reg) => (
                   <tr key={reg.gas_id} className="hover:bg-zinc-800/50 transition-colors">
                     <td className="p-4 text-zinc-500 font-mono">#{reg.gas_id}</td>
-                    <td className="p-4 text-zinc-300">
-                      Viaje #{reg.gas_fk_viaje}
-                      <span className={`block text-xs font-medium mt-1 ${getEstatusColor(reg.via_estatus)}`}>
+                    <td className="p-4 text-zinc-400">
+                      <div className="font-medium text-zinc-300">Viaje #{reg.gas_fk_viaje}</div>
+                      <span className={`block text-[10px] font-bold uppercase mt-1 ${getEstatusColor(reg.via_estatus)}`}>
                         {reg.via_estatus || 'Sin Estatus'}
                       </span>
                     </td>
@@ -194,20 +194,20 @@ const ViajeGastoCRUD = () => {
                       {reg.ins_nombre || <span className="text-zinc-600 italic">Desconocido</span>}
                     </td>
                     <td className="p-4 text-right font-mono text-blue-400">
-                      {reg.gas_cantidad} {reg.ins_unidad_medida || 'u'}
+                      {reg.gas_cantidad} <span className="text-[10px] text-zinc-500 uppercase">{reg.ins_unidad_medida || 'u'}</span>
                     </td>
-                    <td className="p-4 text-right font-mono">{formatCurrency(reg.gas_precio_unitario)}</td>
+                    <td className="p-4 text-right font-mono text-zinc-400 text-sm">{formatCurrency(reg.gas_precio_unitario)}</td>
                     <td className="p-4 text-right font-mono text-white font-bold bg-red-500/5">
                       {formatCurrency(reg.gas_subtotal)}
                     </td>
                     <td className="p-4 text-center">
                       {reg.gas_pagado_por_cooperativa ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-1 rounded-full text-xs font-medium">
-                          <CheckCircle size={14}/> Sí
+                        <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase">
+                          <CheckCircle size={12}/> Sí
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-orange-400 bg-orange-400/10 border border-orange-400/20 px-2 py-1 rounded-full text-xs font-medium">
-                          <XCircle size={14}/> Tripulación
+                        <span className="inline-flex items-center gap-1 text-orange-400 bg-orange-400/10 border border-orange-400/20 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase">
+                          <XCircle size={12}/> Tripulación
                         </span>
                       )}
                     </td>
@@ -246,7 +246,7 @@ const ViajeGastoCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -388,7 +388,7 @@ const ViajeGastoCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

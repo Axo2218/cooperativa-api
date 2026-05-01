@@ -163,19 +163,19 @@ const EspeciesCRUD = () => {
                   const enVeda = especie.esp_en_veda;
                   return (
                     <tr key={especie.esp_id} className="hover:bg-zinc-800/50 transition-colors">
-                      <td className="p-4 text-zinc-500">#{especie.esp_id}</td>
+                      <td className="p-4 text-zinc-500 font-mono">#{especie.esp_id}</td>
                       <td className="p-4 text-white font-medium">{especie.esp_nombre_comun}</td>
-                      <td className="p-4 italic text-sm">{especie.esp_nombre_cientifico || 'N/A'}</td>
-                      <td className="p-4">{especie.cat_esp_nombre || `ID: ${especie.esp_fk_categoria}`}</td>
+                      <td className="p-4 italic text-sm text-zinc-400">{especie.esp_nombre_cientifico || 'N/A'}</td>
+                      <td className="p-4 text-sm text-zinc-400">{especie.cat_esp_nombre || `ID: ${especie.esp_fk_categoria}`}</td>
                       <td className="p-4">
                         {enVeda ? (
-                          <div className="flex items-center gap-2 text-red-500 font-medium">
-                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                          <div className="flex items-center gap-2 text-red-500 font-bold text-[10px] uppercase">
+                            <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></span>
                             En Veda
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 text-emerald-500 font-medium">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <div className="flex items-center gap-2 text-emerald-500 font-bold text-[10px] uppercase">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
                             Permitida
                           </div>
                         )}
@@ -219,7 +219,7 @@ const EspeciesCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -338,7 +338,7 @@ const EspeciesCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

@@ -158,25 +158,25 @@ const AlertaSistemaCRUD = () => {
               <tbody className="divide-y divide-zinc-800">
                 {alertas.map((alerta) => (
                   <tr key={alerta.ale_id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="p-4 text-zinc-500">#{alerta.ale_id}</td>
+                    <td className="p-4 text-zinc-500 font-mono">#{alerta.ale_id}</td>
                     <td className="p-4 text-white font-medium">{alerta.emb_nombre || `ID: ${alerta.ale_fk_embarcacion}`}</td>
-                    <td className="p-4">{alerta.ale_tipo}</td>
+                    <td className="p-4 text-zinc-400 text-sm">{alerta.ale_tipo}</td>
                     <td className="p-4">
-                      <div className="truncate max-w-[200px]" title={alerta.ale_mensaje}>
+                      <div className="truncate max-w-[200px] text-zinc-400 text-xs italic" title={alerta.ale_mensaje}>
                         {alerta.ale_mensaje}
                       </div>
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getNivelRiesgoStyle(alerta.ale_nivel_riesgo)}`}>
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${getNivelRiesgoStyle(alerta.ale_nivel_riesgo)}`}>
                         {alerta.ale_nivel_riesgo || 'N/A'}
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className={`font-medium ${getEstatusStyle(alerta.ale_estatus)}`}>
+                      <span className={`font-bold text-[10px] uppercase ${getEstatusStyle(alerta.ale_estatus)}`}>
                         {alerta.ale_estatus}
                       </span>
                     </td>
-                    <td className="p-4 text-sm text-zinc-500">
+                    <td className="p-4 text-[10px] text-zinc-500 font-mono">
                       {new Date(alerta.ale_fecha_generacion).toLocaleString()}
                     </td>
                     <td className="p-4">
@@ -214,7 +214,7 @@ const AlertaSistemaCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -322,7 +322,7 @@ const AlertaSistemaCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

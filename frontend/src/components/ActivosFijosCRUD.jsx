@@ -164,19 +164,20 @@ const ActivosFijosCRUD = () => {
               <tbody className="divide-y divide-zinc-800">
                 {activos.map((activo) => (
                   <tr key={activo.act_id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="p-4 text-zinc-500">#{activo.act_id}</td>
+                    <td className="p-4 text-zinc-500 font-mono">#{activo.act_id}</td>
                     <td className="p-4 text-white font-medium">{activo.act_nombre}</td>
-                    <td className="p-4">{activo.act_num_serie_o_placa || 'N/A'}</td>
+                    <td className="p-4 text-zinc-400 font-mono text-sm">{activo.act_num_serie_o_placa || 'N/A'}</td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${activo.act_estado === 'Operativo' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${activo.act_estado === 'Operativo' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
                         {activo.act_estado}
                       </span>
                     </td>
-                    <td className="p-4">{activo.tip_act_nombre || activo.act_fk_tipo}</td>
-                    <td className="p-4">{activo.coop_nombre || activo.act_fk_cooperativa}</td>
+                    <td className="p-4 text-sm text-zinc-400">{activo.tip_act_nombre || activo.act_fk_tipo}</td>
+                    <td className="p-4 text-sm text-zinc-400">{activo.coop_nombre || activo.act_fk_cooperativa}</td>
                     <td className="p-4">
-                      {activo.inst_nombre && <span className="block text-sm">🏢 {activo.inst_nombre}</span>}
-                      {activo.emb_nombre && <span className="block text-sm">🚢 {activo.emb_nombre}</span>}
+                      {activo.inst_nombre && <span className="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider">🏢 {activo.inst_nombre}</span>}
+                      {activo.emb_nombre && <span className="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider">🚢 {activo.emb_nombre}</span>}
+                      {!activo.inst_nombre && !activo.emb_nombre && <span className="text-zinc-600 italic">Sin Ubicación</span>}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-3">
@@ -213,7 +214,7 @@ const ActivosFijosCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -352,7 +353,7 @@ const ActivosFijosCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

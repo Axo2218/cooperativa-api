@@ -252,8 +252,8 @@ const ViajeCRUD = () => {
   const personalOcupadoTotal = new Set([...capitanesOcupados, ...tripulantesOcupados]);
 
   return (
-    <div className="text-zinc-400 font-sans">
-      <div>
+    <div className="p-6 bg-zinc-900 min-h-screen text-zinc-400 font-sans">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <Compass className="text-white" size={28} />
@@ -328,7 +328,7 @@ const ViajeCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-4xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -548,7 +548,7 @@ const ViajeCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />
@@ -582,6 +582,7 @@ const ViajeCRUD = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

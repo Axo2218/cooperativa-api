@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../services/api';
-import { Plus, Edit2, Trash2, X, AlertTriangle, Wrench } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, Wrench, Calendar, CheckCircle } from 'lucide-react';
 
 const MantenimientoEmbarcacionCRUD = () => {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -99,7 +99,7 @@ const MantenimientoEmbarcacionCRUD = () => {
       const dataToSubmit = { ...formData };
       if (!dataToSubmit.mant_fecha_fin) dataToSubmit.mant_fecha_fin = null;
 
-      if (currentMantenimiento) {
+      if (currentMantenimiento && currentMantenimiento.mant_id) {
         await axios.put(`/mantenimiento-embarcacion/${currentMantenimiento.mant_id}`, dataToSubmit);
       } else {
         await axios.post('/mantenimiento-embarcacion', dataToSubmit);
@@ -173,26 +173,26 @@ const MantenimientoEmbarcacionCRUD = () => {
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {mantenimientos.map((mant) => (
-                  <tr key={mant.mant_id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="p-4 text-zinc-500">#{mant.mant_id}</td>
+                  <tr key={mant.mant_id || `pending-${mant.mant_fk_embarcacion}`} className={`transition-colors ${!mant.mant_id ? 'bg-amber-500/5 hover:bg-amber-500/10' : 'hover:bg-zinc-800/50'}`}>
+                    <td className="p-4 text-zinc-500 font-mono">{mant.mant_id ? `#${mant.mant_id}` : <span className="text-[10px] bg-amber-500/20 text-amber-500 px-1 rounded uppercase font-bold">Auto</span>}</td>
                     <td className="p-4 text-white font-medium">
                       {mant.emb_nombre}
                       <span className="block text-xs text-zinc-500 font-mono mt-1">{mant.emb_matricula}</span>
                     </td>
-                    <td className="p-4 text-sm truncate max-w-[200px]" title={mant.mant_descripcion}>
+                    <td className="p-4 text-sm text-zinc-400 truncate max-w-[200px]" title={mant.mant_descripcion}>
                       {mant.mant_descripcion}
                     </td>
-                    <td className="p-4 text-sm">
-                      <div className="text-zinc-300">Inicio: {new Date(mant.mant_fecha_inicio).toLocaleDateString()}</div>
-                      <div className="text-zinc-500 mt-1">
-                        Fin: {mant.mant_fecha_fin ? new Date(mant.mant_fecha_fin).toLocaleDateString() : '-'}
+                    <td className="p-4 text-sm text-zinc-400">
+                      <div className="flex flex-col gap-1">
+                        <span className="flex items-center gap-1.5"><Calendar size={12}/> {new Date(mant.mant_fecha_inicio).toLocaleDateString()}</span>
+                        {mant.mant_fecha_fin && <span className="flex items-center gap-1.5 opacity-60"><CheckCircle size={12}/> {new Date(mant.mant_fecha_fin).toLocaleDateString()}</span>}
                       </div>
                     </td>
                     <td className="p-4 text-right text-white font-mono">
                       {formatCurrency(mant.mant_costo)}
                     </td>
                     <td className="p-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getEstadoStyle(mant.mant_estado)}`}>
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold border uppercase ${getEstadoStyle(mant.mant_estado)}`}>
                         {mant.mant_estado}
                       </span>
                     </td>
@@ -205,13 +205,15 @@ const MantenimientoEmbarcacionCRUD = () => {
                         >
                           <Edit2 size={18} />
                         </button>
-                        <button
-                          onClick={() => confirmDelete(mant)}
-                          className="text-zinc-400 hover:text-red-500 transition-colors p-1"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {mant.mant_id && (
+                          <button
+                            onClick={() => confirmDelete(mant)}
+                            className="text-zinc-400 hover:text-red-500 transition-colors p-1"
+                            title="Eliminar"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -231,7 +233,7 @@ const MantenimientoEmbarcacionCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -361,7 +363,7 @@ const MantenimientoEmbarcacionCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

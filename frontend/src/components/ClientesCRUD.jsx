@@ -161,16 +161,16 @@ const ClientesCRUD = () => {
               <tbody className="divide-y divide-zinc-800">
                 {clientes.map((cliente) => (
                   <tr key={cliente.cli_id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="p-4 text-zinc-500">#{cliente.cli_id}</td>
+                    <td className="p-4 text-zinc-500 font-mono">#{cliente.cli_id}</td>
                     <td className="p-4 text-white font-medium">{cliente.cli_nombre}</td>
-                    <td className="p-4 font-mono text-sm">{cliente.cli_rfc || 'N/A'}</td>
+                    <td className="p-4 font-mono text-zinc-400 text-xs">{cliente.cli_rfc || 'N/A'}</td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTipoStyle(cliente.cli_tipo)}`}>
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${getTipoStyle(cliente.cli_tipo)}`}>
                         {cliente.cli_tipo}
                       </span>
                     </td>
-                    <td className="p-4">{cliente.cli_telefono || 'N/A'}</td>
-                    <td className="p-4">{cliente.coop_nombre || `ID: ${cliente.cli_fk_cooperativa}`}</td>
+                    <td className="p-4 text-sm text-zinc-400 font-mono">{cliente.cli_telefono || 'N/A'}</td>
+                    <td className="p-4 text-sm text-zinc-400">{cliente.coop_nombre || `ID: ${cliente.cli_fk_cooperativa}`}</td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-3">
                         <button
@@ -206,7 +206,7 @@ const ClientesCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -329,7 +329,7 @@ const ClientesCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />

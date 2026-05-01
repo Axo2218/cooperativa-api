@@ -325,13 +325,13 @@ const PersonalCRUD = () => {
               <tbody className="divide-y divide-zinc-800">
                 {currentSortedPersonal.map((reg) => (
                   <tr key={reg.per_id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="p-4 text-zinc-500">#{reg.per_id}</td>
+                    <td className="p-4 text-zinc-500 font-mono">#{reg.per_id}</td>
                     <td className="p-4 text-white font-medium">
                       {reg.per_nombre} {reg.per_apellidos}
-                      <span className="block text-xs text-zinc-500 mt-1">Tel: {reg.per_telefono || 'N/A'}</span>
+                      <span className="block text-xs text-zinc-500 mt-1 font-mono">Tel: {reg.per_telefono || 'N/A'}</span>
                     </td>
-                    <td className="p-4 text-sm text-zinc-300">{reg.rol_nombre || 'N/A'}</td>
-                    <td className="p-4 text-sm text-zinc-300">{reg.coop_nombre || 'N/A'}</td>
+                    <td className="p-4 text-sm text-zinc-400">{reg.rol_nombre || 'N/A'}</td>
+                    <td className="p-4 text-sm text-zinc-400">{reg.coop_nombre || 'N/A'}</td>
                     <td className="p-4 text-center">
                       {reg.per_es_socio ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 bg-blue-400/10 border border-blue-400/20 px-2 py-1 rounded-full">
@@ -343,9 +343,9 @@ const PersonalCRUD = () => {
                     </td>
                     <td className="p-4 text-center">
                       {reg.per_estatus ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-400"><CheckCircle size={16}/> Activo</span>
+                        <span className="inline-flex items-center gap-1 text-emerald-400 text-xs font-medium"><CheckCircle size={14}/> Activo</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-red-400"><XCircle size={16}/> Inactivo</span>
+                        <span className="inline-flex items-center gap-1 text-red-400 text-xs font-medium"><XCircle size={14}/> Inactivo</span>
                       )}
                     </td>
                      <td className="p-4">
@@ -390,7 +390,7 @@ const PersonalCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-6 border-b border-zinc-800">
               <h2 className="text-xl font-bold text-white">
@@ -515,7 +515,7 @@ const PersonalCRUD = () => {
 
        {/* Modal Detalles Completos (Expediente Digital) */}
       {isDetailsModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-start justify-center z-50 p-4 overflow-y-auto pt-10">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-start justify-center z-[150] p-4 overflow-y-auto pt-10">
           <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-5xl shadow-2xl overflow-hidden mb-12 animate-in zoom-in-95 fade-in duration-300 ring-1 ring-white/5">
             
             {/* Header del Expediente */}
@@ -718,7 +718,7 @@ const PersonalCRUD = () => {
 
       {/* Modal Confirmar Eliminación */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
           <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
               <AlertTriangle size={32} />
