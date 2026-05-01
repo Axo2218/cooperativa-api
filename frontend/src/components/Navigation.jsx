@@ -135,8 +135,10 @@ const Navigation = () => {
       <div className="max-w-7xl mx-auto w-full px-6 flex justify-between items-center">
 
         {/* BRANDING */}
-        <Link to="/dashboard" className="text-xl font-bold tracking-tighter flex items-center hover:opacity-80 transition-opacity">
-          Coo<span className="text-emerald-500">Pesca</span>
+        <Link to="/dashboard" className="flex items-center group">
+          <span className="text-2xl font-black tracking-tighter bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-600 bg-clip-text text-transparent group-hover:opacity-80 transition-opacity">
+            CooPesca
+          </span>
         </Link>
 
         {/* CENTER MENUS */}

@@ -583,7 +583,6 @@ const ViajeCRUD = () => {
         </div>
       )}
       </div>
-    </div>
   );
 };
 

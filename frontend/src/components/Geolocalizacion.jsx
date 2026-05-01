@@ -49,16 +49,32 @@ const icons = {
 // Definición de formas geográficas para las zonas (Polígonos orgánicos que siguen la costa)
 const ZONE_SHAPES = {
     1: [ // Litoral de Frontera - TAB-01
-        [18.53, -92.68], [18.65, -92.55], [18.85, -92.35], [19.15, -92.55], [19.25, -92.85], [19.05, -93.05], [18.75, -92.95], [18.58, -92.75]
+        // Frontera costera (Sur)
+        [18.55, -92.85], [18.58, -92.75], [18.62, -92.65], [18.66, -92.50], [18.68, -92.40], [18.70, -92.30],
+        // Límites marítimos (Este, Norte, Oeste compartiendo con Sonda de Campeche y Dos Bocas)
+        [18.90, -92.30], [19.10, -92.40], [19.25, -92.55], [19.30, -92.75], [18.95, -92.90], [18.75, -92.85]
     ],
     2: [ // Sonda de Campeche - CAM-05
-        [19.15, -92.55], [19.45, -92.15], [20.15, -92.45], [20.45, -91.85], [19.85, -91.25], [19.25, -91.65], [19.15, -92.05]
+        // Inicia donde termina Litoral de Frontera y abraza la costa hacia Ciudad del Carmen / Campeche
+        [18.70, -92.30], [18.75, -92.10], [18.85, -91.90], [19.00, -91.70], [19.20, -91.50], [19.50, -91.30],
+        // Límites en aguas profundas
+        [20.00, -91.10], [20.45, -91.85], [20.15, -92.45],
+        // Descenso compartiendo frontera exacta con Litoral de Frontera
+        [19.25, -92.55], [19.10, -92.40], [18.90, -92.30]
     ],
     3: [ // Barra de Tupilco - TAB-02
-        [18.35, -93.65], [18.42, -93.45], [18.55, -93.25], [18.85, -93.15], [19.05, -93.45], [18.85, -93.75], [18.55, -93.85]
+        // Frontera costera (Sur - Curva oeste de Tabasco)
+        [18.25, -93.85], [18.28, -93.75], [18.32, -93.65], [18.38, -93.55], [18.42, -93.45], [18.44, -93.35],
+        // Límites marítimos (Este compartiendo con Dos Bocas, Norte y Oeste)
+        [18.60, -93.35], [18.85, -93.30], [18.95, -93.70], [18.75, -93.85]
     ],
     4: [ // Dos Bocas - Litoral - TAB-03
-        [18.45, -93.25], [18.52, -93.05], [18.65, -92.85], [19.05, -92.75], [19.15, -93.05], [18.85, -93.35], [18.55, -93.45]
+        // Inicia donde termina Tupilco y sigue la costa por Paraíso
+        [18.44, -93.35], [18.43, -93.25], [18.42, -93.15], [18.45, -93.05], [18.50, -92.95], [18.55, -92.85],
+        // Sube compartiendo con Litoral de Frontera
+        [18.75, -92.85], [18.95, -92.90], [19.05, -93.10],
+        // Baja compartiendo con Barra de Tupilco
+        [18.85, -93.30], [18.60, -93.35]
     ]
 };
 
@@ -116,7 +132,7 @@ const Geolocalizacion = () => {
     const fetchAllData = async (silent = false) => {
         if (!silent) setLoading(true);
         else setIsRefreshing(true);
-        
+
         try {
             const [emb, coop, inst, zonas, viajes] = await Promise.all([
                 api.get('/embarcaciones'),
@@ -159,7 +175,7 @@ const Geolocalizacion = () => {
     return (
         <div className="p-8 max-w-[1600px] mx-auto min-h-screen">
             <style>{customMapStyles}</style>
-            
+
             {/* CABECERA */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <div>
@@ -172,39 +188,34 @@ const Geolocalizacion = () => {
                     </p>
                 </div>
 
-                <button 
+                <button
                     onClick={() => fetchAllData(true)}
                     disabled={isRefreshing}
-                    className={`bg-zinc-950/50 border p-5 rounded-[2rem] flex flex-col items-start gap-1.5 transition-all group shadow-xl hover:shadow-2xl ${
-                        dbConnectionError ? 'border-red-500/50 hover:border-red-500 shadow-red-500/5' : 'border-zinc-800 hover:border-emerald-500/40 shadow-emerald-500/5'
-                    }`}
+                    className={`bg-zinc-950/50 border p-5 rounded-[2rem] flex flex-col items-start gap-1.5 transition-all group shadow-xl hover:shadow-2xl ${dbConnectionError ? 'border-red-500/50 hover:border-red-500 shadow-red-500/5' : 'border-zinc-800 hover:border-emerald-500/40 shadow-emerald-500/5'
+                        }`}
                 >
-                    <p className={`text-[10px] font-black uppercase tracking-[0.25em] ml-1 ${
-                        dbConnectionError ? 'text-red-500' : 'text-emerald-500'
-                    }`}>Estado del Sistema</p>
+                    <p className={`text-[10px] font-black uppercase tracking-[0.25em] ml-1 ${dbConnectionError ? 'text-red-500' : 'text-emerald-500'
+                        }`}>Estado del Sistema</p>
                     <div className="flex items-center gap-4">
                         <div className="relative">
-                            <div className={`w-2.5 h-2.5 rounded-full ${
-                                isRefreshing ? 'bg-amber-500 animate-pulse' : 
-                                dbConnectionError ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]' : 
-                                'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
-                            }`}></div>
-                            {(isRefreshing || dbConnectionError) && (
-                                <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${
-                                    dbConnectionError ? 'bg-red-500' : 'bg-amber-500'
+                            <div className={`w-2.5 h-2.5 rounded-full ${isRefreshing ? 'bg-amber-500 animate-pulse' :
+                                    dbConnectionError ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]' :
+                                        'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
                                 }`}></div>
+                            {(isRefreshing || dbConnectionError) && (
+                                <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${dbConnectionError ? 'bg-red-500' : 'bg-amber-500'
+                                    }`}></div>
                             )}
                         </div>
                         <span className="text-white font-black text-sm tracking-tight">
-                            {isRefreshing ? 'Sincronizando...' : 
-                             dbConnectionError ? 'Error de Conexión DB' : 
-                             'Sincronizado con DB'}
+                            {isRefreshing ? 'Sincronizando...' :
+                                dbConnectionError ? 'Error de Conexión DB' :
+                                    'Sincronizado con DB'}
                         </span>
-                        <div className={`p-2 rounded-xl bg-zinc-900 group-hover:bg-zinc-800 transition-colors ${
-                            isRefreshing ? 'text-amber-500' : 
-                            dbConnectionError ? 'text-red-500' : 
-                            'text-zinc-500 group-hover:text-emerald-500'
-                        }`}>
+                        <div className={`p-2 rounded-xl bg-zinc-900 group-hover:bg-zinc-800 transition-colors ${isRefreshing ? 'text-amber-500' :
+                                dbConnectionError ? 'text-red-500' :
+                                    'text-zinc-500 group-hover:text-emerald-500'
+                            }`}>
                             <RefreshCw size={18} className={`${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
                         </div>
                     </div>
@@ -224,8 +235,8 @@ const Geolocalizacion = () => {
                             <LayersControl.Overlay checked name="Flota en Puerto">
                                 <LayerGroup>
                                     {data.embarcaciones.filter(e => e.emb_latitud && e.emb_longitud && e.emb_estatus !== 'En Curso').map(emb => (
-                                        <Marker 
-                                            key={`emb-${emb.emb_id}`} 
+                                        <Marker
+                                            key={`emb-${emb.emb_id}`}
                                             position={[parseFloat(emb.emb_latitud), parseFloat(emb.emb_longitud)]}
                                             icon={icons.embarcacion}
                                         >
@@ -249,8 +260,8 @@ const Geolocalizacion = () => {
                             <LayersControl.Overlay checked name="Flota Navegando">
                                 <LayerGroup>
                                     {data.viajesActivos.map(viaje => (
-                                        <Marker 
-                                            key={`viaje-${viaje.via_id}`} 
+                                        <Marker
+                                            key={`viaje-${viaje.via_id}`}
                                             position={[parseFloat(viaje.emb_latitud), parseFloat(viaje.emb_longitud)]}
                                             icon={icons.embarcacionActiva}
                                             zIndexOffset={2000}
@@ -277,8 +288,8 @@ const Geolocalizacion = () => {
                             <LayersControl.Overlay checked name="Cooperativas">
                                 <LayerGroup>
                                     {data.cooperativas.filter(c => c.coop_latitud && c.coop_longitud).map(coop => (
-                                        <Marker 
-                                            key={`coop-${coop.coop_id}`} 
+                                        <Marker
+                                            key={`coop-${coop.coop_id}`}
                                             position={[parseFloat(coop.coop_latitud), parseFloat(coop.coop_longitud)]}
                                             icon={icons.cooperativa}
                                             zIndexOffset={1000}
@@ -302,8 +313,8 @@ const Geolocalizacion = () => {
                             <LayersControl.Overlay checked name="Instalaciones Terrestres">
                                 <LayerGroup>
                                     {data.instalaciones.filter(i => i.inst_latitud && i.inst_longitud).map(inst => (
-                                        <Marker 
-                                            key={`inst-${inst.inst_id}`} 
+                                        <Marker
+                                            key={`inst-${inst.inst_id}`}
                                             position={[parseFloat(inst.inst_latitud), parseFloat(inst.inst_longitud)]}
                                             icon={icons.instalacion}
                                         >
@@ -322,18 +333,18 @@ const Geolocalizacion = () => {
                                     {data.zonas.map(zona => (
                                         <React.Fragment key={`zona-${zona.zona_id}`}>
                                             {ZONE_SHAPES[zona.zona_id] ? (
-                                                <Polygon 
+                                                <Polygon
                                                     positions={ZONE_SHAPES[zona.zona_id]}
-                                                    pathOptions={{ 
-                                                        fillColor: '#ef4444', 
-                                                        color: '#ef4444', 
-                                                        fillOpacity: 0.15, 
+                                                    pathOptions={{
+                                                        fillColor: '#ef4444',
+                                                        color: '#ef4444',
+                                                        fillOpacity: 0.15,
                                                         weight: 2,
                                                         dashArray: '5, 10'
                                                     }}
                                                 />
                                             ) : zona.zona_lat_min && (
-                                                <Rectangle 
+                                                <Rectangle
                                                     bounds={[
                                                         [parseFloat(zona.zona_lat_min), parseFloat(zona.zona_lon_min)],
                                                         [parseFloat(zona.zona_lat_max), parseFloat(zona.zona_lon_max)]
@@ -342,15 +353,19 @@ const Geolocalizacion = () => {
                                                 />
                                             )}
                                             {zona.zona_latitud && zona.zona_longitud && (
-                                                <Marker 
-                                                    position={[parseFloat(zona.zona_latitud), parseFloat(zona.zona_longitud)]}
+                                                <Marker
+                                                    position={
+                                                        zona.zona_id === 2 
+                                                            ? [19.45, -91.75] // Posición corregida para Sonda de Campeche (Área Grande)
+                                                            : [parseFloat(zona.zona_latitud), parseFloat(zona.zona_longitud)]
+                                                    }
                                                     icon={icons.zona}
                                                 >
                                                     <Popup>
                                                         <div className="p-2 bg-zinc-900 text-white rounded-lg border border-zinc-800 min-w-[150px]">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <MapIcon size={14} className="text-red-500" />
-                                                                <h4 className="font-bold text-xs uppercase">Zona: {zona.zona_nombre}</h4>
+                                                                <h4 className="font-bold text-xs uppercase">ZONA: {zona.zona_nombre}</h4>
                                                             </div>
                                                             <p className="text-[10px] text-zinc-500 italic">{zona.zona_cuadrante}</p>
                                                         </div>
@@ -382,7 +397,7 @@ const Geolocalizacion = () => {
                             {data.viajesActivos.length > 0 ? data.viajesActivos.map(viaje => (
                                 <div key={`side-${viaje.via_id}`} className={`p-5 bg-zinc-800/40 border rounded-2xl transition-all group relative overflow-hidden ${viaje.via_estatus === 'En Curso' ? 'border-zinc-800/50 hover:border-emerald-500/50' : 'border-amber-500/30 hover:border-amber-500/50'}`}>
                                     <div className={`absolute top-0 right-0 w-1 h-full transition-opacity opacity-0 group-hover:opacity-100 ${viaje.via_estatus === 'En Curso' ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-                                    
+
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
                                             <h3 className="font-black text-white text-lg group-hover:text-emerald-400 transition-colors uppercase tracking-tight">{viaje.barco}</h3>
@@ -436,7 +451,7 @@ const Geolocalizacion = () => {
                                 </div>
                             )}
                         </div>
-                        
+
                         <div className="mt-6 pt-6 border-t border-zinc-800/50">
                             <div className="flex items-center gap-3 p-4 bg-zinc-800/20 rounded-2xl border border-zinc-800/50">
                                 <Info className="text-zinc-500" size={18} />
