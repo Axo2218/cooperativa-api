@@ -381,10 +381,19 @@ const ViajeCRUD = () => {
                       {embarcaciones
                         .filter(e => !selectedCoop || e.emb_fk_cooperativa === selectedCoop)
                         .map(e => {
-                          const isOcupado = barcosOcupados.has(e.emb_id) && (!currentRegistro || currentRegistro.via_fk_embarcacion !== e.emb_id);
+                          const isEnRuta = barcosOcupados.has(e.emb_id) && (!currentRegistro || currentRegistro.via_fk_embarcacion !== e.emb_id);
+                          const isMantenimiento = e.emb_estatus === 'En Mantenimiento';
+                          const isInactiva = e.emb_estatus === 'Inactiva';
+                          const isDisabled = isEnRuta || isMantenimiento || isInactiva;
+                          
+                          let statusLabel = '';
+                          if (isEnRuta) statusLabel = ' - EN RUTA';
+                          else if (isMantenimiento) statusLabel = ' - MANTENIMIENTO';
+                          else if (isInactiva) statusLabel = ' - INACTIVA';
+
                           return (
-                            <option key={e.emb_id} value={e.emb_id} disabled={isOcupado}>
-                              {e.emb_nombre} ({e.emb_matricula}) {isOcupado ? ' - EN RUTA' : ''}
+                            <option key={e.emb_id} value={e.emb_id} disabled={isDisabled}>
+                              {e.emb_nombre} ({e.emb_matricula}){statusLabel}
                             </option>
                           );
                         })}
