@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X } from 'lucide-react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 const AdminViajes = ({ viajes, recargarViajes }) => {
     const [catalogos, setCatalogos] = useState({ embarcaciones: [], capitanes: [], zonas: [] });
@@ -37,12 +38,13 @@ const AdminViajes = ({ viajes, recargarViajes }) => {
         e.preventDefault();
         try {
             await api.post('/viajes', formData);
+            toast.success("¡Viaje planificado con éxito!");
             setMostrarModal(false);
             recargarViajes();
             setFormData({ via_fk_embarcacion: '', via_fk_capitan: '', via_presupuesto_estimado: '', via_fk_zona: '' });
         } catch (error) {
             console.error("Error al crear:", error);
-            alert("Hubo un fallo al zarpar.");
+            toast.error("Hubo un fallo al zarpar. Revisa los datos.");
         }
     };
 
@@ -57,8 +59,10 @@ const AdminViajes = ({ viajes, recargarViajes }) => {
             await api.put(`/viajes/${datosEdicion.id}/estatus`, { via_estatus: datosEdicion.estatus });
             setMostrarModalEdicion(false);
             recargarViajes();
+            toast.success("Estatus de viaje actualizado.");
         } catch (error) {
             console.error("Error al editar:", error);
+            toast.error("Error al actualizar el estatus.");
         }
     };
 
@@ -75,9 +79,10 @@ const AdminViajes = ({ viajes, recargarViajes }) => {
             setMostrarModalEliminar(false); // Cerramos el modal
             setViajeAEliminar(null); // Limpiamos la mira
             recargarViajes(); // Actualizamos el radar
+            toast.success("Viaje eliminado del sistema.");
         } catch (error) {
             console.error("Error al eliminar:", error);
-            alert("No se pudo eliminar. Revisa si el viaje tiene gastos registrados que impidan borrarlo.");
+            toast.error("No se pudo eliminar. El viaje ya tiene registros asociados.");
         }
     };
 

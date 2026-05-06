@@ -6,6 +6,8 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 // 1. Importamos nuestra conexión a la API
 import api from '../services/api';
+import toast from 'react-hot-toast';
+import ConfirmationModal from './ConfirmationModal';
 
 // Configuración de iconos para Leaflet (evitar errores de Vite)
 const shipIcon = new L.DivIcon({
@@ -123,6 +125,15 @@ const DetallesViaje = ({ viaje, volver }) => {
     });
     const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
     
+    // --- ESTADO DE CONFIRMACIÓN CUSTOM ---
+    const [confirmConfig, setConfirmConfig] = useState({ 
+        isOpen: false, 
+        title: '', 
+        message: '', 
+        onConfirm: () => {}, 
+        type: 'warning' 
+    });
+    
     // --- ESTADOS DE BÚSQUEDA ---
     const [busquedaTripulante, setBusquedaTripulante] = useState('');
     const [busquedaEspecie, setBusquedaEspecie] = useState('');
@@ -231,12 +242,12 @@ const DetallesViaje = ({ viaje, volver }) => {
         if (!nuevoTripulante.id_personal || !nuevoTripulante.rol_id) return;
 
         if (!['Pendiente', 'En Preparación'].includes(viaje.via_estatus)) {
-            alert("No se pueden hacer cambios en la tripulación una vez que el viaje ha avanzado de la etapa de Preparación.");
+            toast.error("No se pueden hacer cambios en la tripulación una vez que el viaje ha avanzado.");
             return;
         }
 
         if (tripulacion.find(t => t.id === Number(nuevoTripulante.id_personal))) {
-            alert("¡Este elemento ya se encuentra asignado a la tripulación actual!");
+            toast.error("¡Este elemento ya se encuentra asignado!");
             return;
         }
 
@@ -257,25 +268,27 @@ const DetallesViaje = ({ viaje, volver }) => {
 
             setNuevoTripulante({ id_personal: '', nombre: '', rol_id: '', rol_nombre: '' });
             setMostrarModalTripulacion(false);
+            toast.success(`${nuevoTripulante.nombre} se ha unido a la tripulación.`);
         } catch (error) {
             console.error("Error al asignar tripulante:", error);
-            alert(error.response?.data?.error || "Error al asignar el tripulante.");
+            toast.error(error.response?.data?.error || "Error al asignar el tripulante.");
         }
     };
 
     const eliminarTripulante = async (id, via_per_id) => {
         if (id === 'cap') return;
         if (!['Pendiente', 'En Preparación'].includes(viaje.via_estatus)) {
-            alert("No se pueden eliminar tripulantes una vez que el viaje ha avanzado de la etapa de Preparación.");
+            toast.error("No se pueden eliminar tripulantes una vez que el viaje ha zarpado.");
             return;
         }
 
         try {
             await api.delete(`/viajes-personal/${via_per_id}`);
             setTripulacion(tripulacion.filter(t => t.id !== id));
+            toast.success("Tripulante desembarcado.");
         } catch (error) {
             console.error("Error al desembarcar tripulante:", error);
-            alert("Error al eliminar el tripulante.");
+            toast.error("Error al eliminar el tripulante.");
         }
     };
 
@@ -298,22 +311,33 @@ const DetallesViaje = ({ viaje, volver }) => {
                 det_cap_subtotal: nuevaCaptura.kilogramos * nuevaCaptura.precio
             }]);
             setNuevaCaptura({ especie_id: '', kilogramos: '', precio: '' });
+            toast.success("Captura registrada correctamente.");
         } catch (error) {
             console.error("Error al registrar captura:", error);
-            alert("Error al registrar la captura.");
+            toast.error("Error al registrar la captura.");
         }
     };
 
     const finalizarViaje = async () => {
-        if (!window.confirm("¿Estás seguro de finalizar el registro y liquidar el viaje? Una vez completado no se podrán agregar más capturas.")) return;
+        setConfirmConfig({
+            isOpen: true,
+            title: '¿Finalizar Registro?',
+            message: '¿Estás seguro de finalizar el registro y liquidar el viaje? Una vez completado no se podrán agregar más capturas.',
+            type: 'warning',
+            onConfirm: ejecutarFinalizacion
+        });
+    };
+
+    const ejecutarFinalizacion = async () => {
         setIsFinalizing(true);
+        const loadToast = toast.loading("Liquidando viaje y actualizando inventarios...");
         try {
             const res = await api.put(`/viaje/finalizar/${viaje.via_id}`);
-            alert("¡Viaje finalizado exitosamente! Se han calculado los totales de producción e ingresos.");
-            volver(); // Regresamos al dashboard para ver los cambios
+            toast.success("¡Viaje finalizado y liquidado exitosamente!", { id: loadToast });
+            setTimeout(() => volver(), 1500); 
         } catch (error) {
             console.error("Error al finalizar viaje:", error);
-            alert("Ocurrió un error al intentar liquidar el viaje.");
+            toast.error("Ocurrió un error al intentar liquidar el viaje.", { id: loadToast });
         } finally {
             setIsFinalizing(false);
         }
@@ -351,12 +375,12 @@ const DetallesViaje = ({ viaje, volver }) => {
                 }
             }
 
-            alert("¡Equipamiento actualizado! El presupuesto y stock de bodega se han sincronizado.");
+            toast.success("¡Equipamiento actualizado y sincronizado!");
             setMostrarModalInsumos(false);
-            window.location.reload(); 
+            setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
             console.error("Error al equipar:", error);
-            alert("Ocurrió un error al sincronizar los insumos.");
+            toast.error("Ocurrió un error al sincronizar los insumos.");
         }
     };
 
@@ -371,7 +395,7 @@ const DetallesViaje = ({ viaje, volver }) => {
             });
         } catch (error) {
             console.error("Error al actualizar coordenadas:", error);
-            alert("Error al reportar posición GPS.");
+            toast.error("Error al reportar posición GPS.");
         } finally {
             setIsUpdatingGPS(false);
         }
@@ -380,7 +404,7 @@ const DetallesViaje = ({ viaje, volver }) => {
     const reconciliarInsumo = async (ins_id, accion) => {
         try {
             const cantidad = cantidadesReconciliacion[ins_id] || 0;
-            if (cantidad <= 0) return alert("Selecciona una cantidad para procesar.");
+            if (cantidad <= 0) return toast.error("Selecciona una cantidad válida.");
 
             await api.post('/viaje-insumos/reconciliar', {
                 via_id: viaje.via_id,
@@ -405,7 +429,7 @@ const DetallesViaje = ({ viaje, volver }) => {
             
         } catch (error) {
             console.error("Error al reconciliar:", error);
-            alert("Error al procesar la reconciliación.");
+            toast.error("Error al procesar la reconciliación.");
         }
     };
 
@@ -463,11 +487,11 @@ const DetallesViaje = ({ viaje, volver }) => {
 
         try {
             await api.put(`/viaje/estatus/${viaje.via_id}`, { via_estatus: nuevoEstatus });
-            alert(`Estatus actualizado a: ${nuevoEstatus}`);
-            window.location.reload(); // Recarga simple para ver cambios
+            toast.success(`Estatus actualizado: ${nuevoEstatus}`);
+            setTimeout(() => window.location.reload(), 800);
         } catch (error) {
             console.error("Error al cambiar estatus:", error);
-            alert("Error al actualizar el estatus del viaje.");
+            toast.error("Error al actualizar el estatus del viaje.");
         }
     };
 
@@ -480,12 +504,12 @@ const DetallesViaje = ({ viaje, volver }) => {
                 via_observaciones: datosLlegada.observaciones,
                 via_fk_puerto: datosLlegada.via_fk_puerto
             });
-            alert("¡Arribo a puerto registrado exitosamente!");
+            toast.success("¡Arribo a puerto registrado exitosamente!");
             setMostrarModalLlegada(false);
-            window.location.reload();
+            setTimeout(() => window.location.reload(), 1000);
         } catch (error) {
             console.error("Error al registrar llegada:", error);
-            alert("Error al registrar la llegada a puerto.");
+            toast.error("Error al registrar la llegada a puerto.");
         }
     };
 
@@ -1222,6 +1246,18 @@ const DetallesViaje = ({ viaje, volver }) => {
                     </div>
                 </div>
             )}
+
+            {/* MODAL DE CONFIRMACIÓN GLOBAL */}
+            <ConfirmationModal 
+                isOpen={confirmConfig.isOpen}
+                onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+                onConfirm={confirmConfig.onConfirm}
+                title={confirmConfig.title}
+                message={confirmConfig.message}
+                type={confirmConfig.type}
+                confirmText="Aceptar"
+                cancelText="Volver"
+            />
         </div>
     );
 };

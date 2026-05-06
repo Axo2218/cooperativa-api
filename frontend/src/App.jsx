@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import topoBg from './assets/topo-bg.png';
 
 // Components
@@ -48,6 +49,32 @@ import AlertaSistemaCRUD from './components/AlertaSistemaCRUD';
 function App() {
   return (
     <BrowserRouter>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#18181b',
+            color: '#fff',
+            border: '1px solid #27272a',
+            fontSize: '14px',
+            borderRadius: '12px',
+            padding: '12px 20px',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
       <div className="min-h-screen bg-[#020617] text-white font-sans flex flex-col relative overflow-x-hidden">
         {/* Fondo Topográfico */}
         <div 

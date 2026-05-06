@@ -154,6 +154,25 @@ const actualizarEstatusViaje = async (req, res) => {
 
         const viajeActualizado = actualizar.rows[0];
 
+        // LÓGICA DE ACTUALIZACIÓN DE POSICIÓN GPS AL ARRIBAR A PUERTO
+        if (via_estatus === 'En Puerto' && via_fk_puerto) {
+            const puertoData = await client.query(
+                "SELECT inst_latitud, inst_longitud FROM instalacion WHERE inst_id = $1",
+                [via_fk_puerto]
+            );
+            
+            if (puertoData.rows.length > 0) {
+                const { inst_latitud, inst_longitud } = puertoData.rows[0];
+                if (inst_latitud && inst_longitud) {
+                    await client.query(
+                        "UPDATE embarcacion SET emb_latitud = $1, emb_longitud = $2 WHERE emb_id = $3",
+                        [inst_latitud, inst_longitud, viajeActualizado.via_fk_embarcacion]
+                    );
+                    console.log(`⚓ Posición de la embarcación ${viajeActualizado.via_fk_embarcacion} actualizada al puerto ${via_fk_puerto}`);
+                }
+            }
+        }
+
         // LÓGICA DE INVENTARIO PERSISTENTE:
         // Si el viaje pasa a 'En Preparación', cargamos automáticamente lo que el barco ya tiene en su bodega persistente.
         if (via_estatus === 'En Preparación') {
