@@ -369,7 +369,6 @@ const DetallesViaje = ({ viaje, volver }) => {
                 emb_latitud: parseFloat(coordenadas.lat),
                 emb_longitud: parseFloat(coordenadas.lon)
             });
-            alert("¡Ubicación actualizada en el radar activo!");
         } catch (error) {
             console.error("Error al actualizar coordenadas:", error);
             alert("Error al reportar posición GPS.");
