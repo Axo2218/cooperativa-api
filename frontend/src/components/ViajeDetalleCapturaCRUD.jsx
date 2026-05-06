@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../services/api';
-import { Plus, Edit2, Trash2, X, AlertTriangle, Fish, Calculator } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, Fish, Calculator, Ship } from 'lucide-react';
 
 const ViajeDetalleCapturaCRUD = () => {
   const [capturas, setCapturas] = useState([]);
   const [viajes, setViajes] = useState([]);
   const [especies, setEspecies] = useState([]);
+  const [embarcaciones, setEmbarcaciones] = useState([]);
+  const [filtroBarco, setFiltroBarco] = useState('all');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -23,6 +25,7 @@ const ViajeDetalleCapturaCRUD = () => {
     fetchCapturas();
     fetchViajes();
     fetchEspecies();
+    fetchEmbarcaciones();
   }, []);
 
   const fetchCapturas = async () => {
@@ -50,6 +53,15 @@ const ViajeDetalleCapturaCRUD = () => {
       setEspecies(data);
     } catch (error) {
       console.error('Error al cargar especies:', error);
+    }
+  };
+
+  const fetchEmbarcaciones = async () => {
+    try {
+      const { data } = await axios.get('/embarcaciones');
+      setEmbarcaciones(data);
+    } catch (error) {
+      console.error('Error al cargar embarcaciones:', error);
     }
   };
 
@@ -154,13 +166,32 @@ const ViajeDetalleCapturaCRUD = () => {
             <Fish className="text-white" size={28} />
             <h1 className="text-2xl font-bold text-white">Registro de Capturas (Bitácora)</h1>
           </div>
-          <button
-            onClick={() => openModal()}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-          >
-            <Plus size={20} />
-            Registrar Captura
-          </button>
+          
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Embarcación:</label>
+              <select
+                value={filtroBarco}
+                onChange={(e) => setFiltroBarco(e.target.value)}
+                className="bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all min-w-[220px] shadow-inner"
+              >
+                <option value="all" className="bg-zinc-900 text-white">Todas las Embarcaciones</option>
+                {embarcaciones.map(b => (
+                  <option key={b.emb_id} value={b.emb_id} className="bg-zinc-900 text-white">
+                    {b.emb_nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={() => openModal()}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors font-medium whitespace-nowrap"
+            >
+              <Plus size={20} />
+              Registrar Captura
+            </button>
+          </div>
         </div>
 
         <div className="bg-zinc-800/50 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
@@ -178,11 +209,14 @@ const ViajeDetalleCapturaCRUD = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {capturas.map((reg) => (
+                {capturas
+                  .filter(reg => filtroBarco === 'all' || reg.via_fk_embarcacion?.toString() === filtroBarco)
+                  .map((reg) => (
                   <tr key={reg.det_cap_id} className="hover:bg-zinc-800/50 transition-colors">
                     <td className="p-4 text-zinc-500 font-mono">#{reg.det_cap_id}</td>
                     <td className="p-4 text-zinc-400">
                       <div className="font-medium text-zinc-300">Viaje #{reg.det_cap_fk_viaje}</div>
+                      <div className="text-[10px] text-emerald-400 font-bold uppercase">{reg.barco || 'Barco N/A'}</div>
                       <span className={`block text-[10px] font-bold uppercase mt-1 ${getEstatusColor(reg.via_estatus)}`}>
                         {reg.via_estatus || 'Sin Estatus'}
                       </span>

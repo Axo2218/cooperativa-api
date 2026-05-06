@@ -175,6 +175,7 @@ const PescaHistoricoCRUD = () => {
                   <th className="p-4 font-semibold">Detalle de Captura</th>
                   <th className="p-4 font-semibold text-right">Total (Kg)</th>
                   <th className="p-4 font-semibold text-right">Ingresos</th>
+                  <th className="p-4 font-semibold text-right text-emerald-400">Ganancia Neta</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -186,8 +187,8 @@ const PescaHistoricoCRUD = () => {
                       <div className="text-[10px] text-zinc-500 font-mono uppercase">{reg.emb_matricula}</div>
                     </td>
                     <td className="p-4 text-[10px] uppercase font-bold">
-                      <div className="text-zinc-300">Salida: {new Date(reg.via_fecha_salida).toLocaleDateString()}</div>
-                      <div className="text-emerald-500 mt-1">Llegada: {new Date(reg.via_fecha_llegada).toLocaleDateString()}</div>
+                      <div className="text-zinc-300">Salida: {reg.via_fecha_salida ? new Date(reg.via_fecha_salida).toLocaleDateString() : '---'}</div>
+                      <div className="text-emerald-500 mt-1">Llegada: {reg.via_fecha_llegada ? new Date(reg.via_fecha_llegada).toLocaleDateString() : 'En curso'}</div>
                     </td>
                     <td className="p-4 max-w-[200px]">
                       <div className="text-emerald-400 font-bold text-sm tracking-tight">{reg.capitan_nombre}</div>
@@ -203,6 +204,9 @@ const PescaHistoricoCRUD = () => {
                     </td>
                     <td className="p-4 text-right">
                       <div className="text-emerald-500 font-black text-lg font-mono">{formatCurrency(reg.via_total_ingresos)}</div>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="text-emerald-400 font-black text-lg font-mono">{formatCurrency(reg.via_ganancia_neta)}</div>
                     </td>
                   </tr>
                 ))}

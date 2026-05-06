@@ -8,10 +8,13 @@ const getCapturas = async (req, res) => {
                 dc.*, 
                 v.via_fecha_salida,
                 v.via_estatus,
+                v.via_fk_embarcacion,
+                emb.emb_nombre AS barco,
                 e.esp_nombre_comun,
                 (dc.det_cap_kilogramos * dc.det_cap_precio_pactado) AS det_cap_subtotal
             FROM viaje_detalle_captura dc
             LEFT JOIN viaje v ON dc.det_cap_fk_viaje = v.via_id
+            LEFT JOIN embarcacion emb ON v.via_fk_embarcacion = emb.emb_id
             LEFT JOIN especie e ON dc.det_cap_fk_especie = e.esp_id
             ORDER BY dc.det_cap_id DESC
         `);

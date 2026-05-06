@@ -14,7 +14,9 @@ const getGastos = async (req, res) => {
             FROM viaje_gasto g
             LEFT JOIN viaje v ON g.gas_fk_viaje = v.via_id
             LEFT JOIN insumo i ON g.gas_fk_insumo = i.ins_id
+            WHERE v.via_archivado = false OR v.via_estatus = 'Completado'
             ORDER BY g.gas_id DESC
+            LIMIT 100
         `);
         res.json(result.rows);
     } catch (error) {

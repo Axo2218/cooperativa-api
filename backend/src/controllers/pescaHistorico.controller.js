@@ -10,6 +10,7 @@ const getPescaHistorico = async (req, res) => {
                 v.via_fecha_llegada,
                 v.via_total_kg,
                 v.via_total_ingresos,
+                v.via_ganancia_neta,
                 e.emb_nombre,
                 e.emb_matricula,
                 p_cap.per_nombre || ' ' || p_cap.per_apellidos AS capitan_nombre,
@@ -27,7 +28,7 @@ const getPescaHistorico = async (req, res) => {
             LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
             LEFT JOIN personal p_cap ON v.via_fk_capitan = p_cap.per_id
             WHERE v.via_estatus = 'Completado'
-            ORDER BY v.via_fecha_llegada DESC
+            ORDER BY v.via_fecha_llegada DESC NULLS LAST, v.via_id DESC
         `);
         res.json(result.rows);
     } catch (error) {

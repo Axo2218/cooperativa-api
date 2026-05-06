@@ -164,6 +164,16 @@ const actualizarEstatusViaje = async (req, res) => {
                 WHERE ie_fk_embarcacion = $2
                 ON CONFLICT DO NOTHING
             `, [id, viajeActualizado.via_fk_embarcacion]);
+
+            // CARGA AUTOMÁTICA DE GASTOS: Convertimos el inventario del barco en gastos operativos
+            await client.query(`
+                INSERT INTO viaje_gasto (gas_fk_viaje, gas_fk_insumo, gas_cantidad, gas_precio_unitario, gas_pagado_por_cooperativa)
+                SELECT $1, ie.ie_fk_insumo, ie.ie_cantidad, i.ins_costo_unitario_referencia, true
+                FROM inventario_embarcacion ie
+                JOIN insumo i ON ie.ie_fk_insumo = i.ins_id
+                WHERE ie.ie_fk_embarcacion = $2
+                ON CONFLICT DO NOTHING
+            `, [id, viajeActualizado.via_fk_embarcacion]);
         }
 
         await client.query('COMMIT');
@@ -281,6 +291,17 @@ const finalizarViaje = async (req, res) => {
                 via_reparto_tripulacion = $6
             WHERE via_id = $7 RETURNING *
         `, [total_kg, total_ingresos, ganancia_neta, reparto_coop, reparto_cap, reparto_trip, id]);
+
+        // 6. CREACIÓN AUTOMÁTICA DE LOTE (Misión Inventario)
+        // Solo si hay captura, creamos un lote para su trazabilidad y venta.
+        if (total_kg > 0) {
+            await client.query(`
+                INSERT INTO lote_pesca 
+                (lote_fk_viaje, lote_costo_operativo_total, lote_kilos_totales_recibidos, lote_stock_actual)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT DO NOTHING -- Evita duplicados si se re-finaliza
+            `, [id, presupuesto, total_kg, total_kg]);
+        }
         
         await client.query('COMMIT');
         res.json({ mensaje: 'Viaje finalizado y liquidado correctamente', viaje: result.rows[0] });

@@ -46,38 +46,48 @@ const icons = {
     zona: createCustomIcon('#ef4444')        // Red
 };
 
-// Definición de formas geográficas para las zonas (Polígonos orgánicos que siguen la costa)
+// Definición de formas geográficas para las zonas (Techo curvo y caída en 'S' en el oeste)
 const ZONE_SHAPES = {
     1: [ // Litoral de Frontera - TAB-01
         // Frontera costera (Sur)
         [18.55, -92.85], [18.58, -92.75], [18.62, -92.65], [18.66, -92.50], [18.68, -92.40], [18.70, -92.30],
-        // Límites marítimos (Este, Norte, Oeste compartiendo con Sonda de Campeche y Dos Bocas)
-        [18.90, -92.30], [19.10, -92.40], [19.25, -92.55], [19.30, -92.75], [18.95, -92.90], [18.75, -92.85]
+        // Frontera compartida con Sonda de Campeche (Inclinación errática noreste)
+        [18.90, -92.30], [19.10, -92.40], [19.25, -92.55], [19.70, -92.50], [20.15, -92.45],
+        // Límite norte curvo (Trazado verde ascendente hacia Campeche)
+        [20.05, -92.75], [19.90, -93.05],
+        // Bajando (Frontera compartida con Dos Bocas, zig-zag errático)
+        [19.65, -92.95], [19.35, -93.00], [19.10, -92.88], [18.90, -92.92], [18.75, -92.85]
     ],
     2: [ // Sonda de Campeche - CAM-05
-        // Inicia donde termina Litoral de Frontera y abraza la costa hacia Ciudad del Carmen / Campeche
-        [18.70, -92.30], [18.75, -92.10], [18.85, -91.90], [19.00, -91.70], [19.20, -91.50], [19.50, -91.30],
-        // Límites en aguas profundas
-        [20.00, -91.10], [20.45, -91.85], [20.15, -92.45],
-        // Descenso compartiendo frontera exacta con Litoral de Frontera
-        [19.25, -92.55], [19.10, -92.40], [18.90, -92.30]
+        // Frontera costera ajustada a Campeche
+        [18.70, -92.30], [18.72, -91.80], [18.80, -91.35], [19.10, -90.85],
+        [19.45, -90.65], [19.85, -90.55], [20.20, -90.45],
+        // Curva norte en aguas profundas
+        [20.45, -91.00], [20.15, -92.45],
+        // Descenso compartiendo frontera diagonal exacta con Litoral de Frontera
+        [19.70, -92.50], [19.25, -92.55], [19.10, -92.40], [18.90, -92.30]
     ],
     3: [ // Barra de Tupilco - TAB-02
-        // Frontera costera (Sur - Curva oeste de Tabasco)
+        // Frontera costera (Sur)
         [18.25, -93.85], [18.28, -93.75], [18.32, -93.65], [18.38, -93.55], [18.42, -93.45], [18.44, -93.35],
-        // Límites marítimos (Este compartiendo con Dos Bocas, Norte y Oeste)
-        [18.60, -93.35], [18.85, -93.30], [18.95, -93.70], [18.75, -93.85]
+        // Frontera compartida con Dos Bocas (Subiendo en zig-zag errático)
+        [18.60, -93.35], [18.75, -93.42], [18.95, -93.38], [19.20, -93.50], [19.50, -93.45], [19.75, -93.55],
+        // Límite norte curvo (Trazado verde bajando hacia el oeste)
+        [19.70, -93.70], [19.60, -93.85],
+        // Límite oeste bajando a costa (Trazado verde: curva en "S" con panza hacia afuera)
+        [19.30, -93.95], [18.90, -94.05], [18.60, -94.10], [18.35, -94.00], [18.25, -93.85]
     ],
     4: [ // Dos Bocas - Litoral - TAB-03
-        // Inicia donde termina Tupilco y sigue la costa por Paraíso
+        // Frontera costera (Sur)
         [18.44, -93.35], [18.43, -93.25], [18.42, -93.15], [18.45, -93.05], [18.50, -92.95], [18.55, -92.85],
-        // Sube compartiendo con Litoral de Frontera
-        [18.75, -92.85], [18.95, -92.90], [19.05, -93.10],
-        // Baja compartiendo con Barra de Tupilco
-        [18.85, -93.30], [18.60, -93.35]
+        // Frontera compartida con Litoral Frontera (Subiendo en zig-zag errático)
+        [18.75, -92.85], [18.90, -92.92], [19.10, -92.88], [19.35, -93.00], [19.65, -92.95], [19.90, -93.05],
+        // Límite norte curvo (Trazado verde, puente entre Frontera y Tupilco)
+        [19.85, -93.30], [19.75, -93.55],
+        // Bajando (Frontera compartida con Tupilco, zig-zag errático)
+        [19.50, -93.45], [19.20, -93.50], [18.95, -93.38], [18.75, -93.42], [18.60, -93.35]
     ]
 };
-
 const customMapStyles = `
   .leaflet-control-layers {
     background: #09090b !important;
@@ -199,8 +209,8 @@ const Geolocalizacion = () => {
                     <div className="flex items-center gap-4">
                         <div className="relative">
                             <div className={`w-2.5 h-2.5 rounded-full ${isRefreshing ? 'bg-amber-500 animate-pulse' :
-                                    dbConnectionError ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]' :
-                                        'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
+                                dbConnectionError ? 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)]' :
+                                    'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]'
                                 }`}></div>
                             {(isRefreshing || dbConnectionError) && (
                                 <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${dbConnectionError ? 'bg-red-500' : 'bg-amber-500'
@@ -213,8 +223,8 @@ const Geolocalizacion = () => {
                                     'Sincronizado con DB'}
                         </span>
                         <div className={`p-2 rounded-xl bg-zinc-900 group-hover:bg-zinc-800 transition-colors ${isRefreshing ? 'text-amber-500' :
-                                dbConnectionError ? 'text-red-500' :
-                                    'text-zinc-500 group-hover:text-emerald-500'
+                            dbConnectionError ? 'text-red-500' :
+                                'text-zinc-500 group-hover:text-emerald-500'
                             }`}>
                             <RefreshCw size={18} className={`${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
                         </div>
@@ -355,7 +365,7 @@ const Geolocalizacion = () => {
                                             {zona.zona_latitud && zona.zona_longitud && (
                                                 <Marker
                                                     position={
-                                                        zona.zona_id === 2 
+                                                        zona.zona_id === 2
                                                             ? [19.45, -91.75] // Posición corregida para Sonda de Campeche (Área Grande)
                                                             : [parseFloat(zona.zona_latitud), parseFloat(zona.zona_longitud)]
                                                     }

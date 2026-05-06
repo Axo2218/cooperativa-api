@@ -49,6 +49,7 @@ app.use('/api/cat-tipo-instalacion', require('./routes/catTipoInstalacion.routes
 app.use('/api/bitacora-mantenimiento', require('./routes/bitacoraMantenimiento.routes'));
 
 // Rutas - Sistema
+app.use('/api/ai', require('./routes/ai.routes'));
 app.use('/api/stats', require('./routes/stats.routes'));
 app.use('/api/alertas-sistema', require('./routes/alertaSistema.routes'));
 app.use('/api/catalogo', require('./routes/catalogo.routes'));

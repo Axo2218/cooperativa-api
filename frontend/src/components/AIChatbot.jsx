@@ -1,10 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Sparkles } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Zap } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from '../services/api';
 
 const AIChatbot = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Mapa de rutas para la navegación de COOPIA
+  const sectionRoutes = {
+    'dashboard': '/dashboard',
+    'geolocalizacion': '/geolocalizacion',
+    'viajes': '/operaciones/viajes',
+    'tripulacion': '/operaciones/tripulacion',
+    'capturas': '/operaciones/capturas',
+    'gastos': '/operaciones/gastos'
+  };
+
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
-    { text: "¡Hola! Soy la IA de CooPesca. ¿En qué puedo ayudarte hoy?", isBot: true }
+    { text: "¡Hola! Soy COOPIA, la IA de CooPesca. ¿En qué puedo ayudarte con la gestión de la cooperativa hoy?", isBot: true }
   ]);
   const [input, setInput] = useState('');
   const scrollRef = useRef(null);
@@ -15,21 +31,48 @@ const AIChatbot = () => {
     }
   }, [messages]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage = { text: input, isBot: false };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
 
-    // Respuesta
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        text: "todavia no he habilitado esta funcion xdd",
-        isBot: true
+    try {
+      const { data } = await axios.post('/ai/chat', { 
+        message: input,
+        context: location.pathname
+      });
+      
+      let aiText = data.text;
+
+      // DETECTOR DE NAVEGACIÓN: [GOTO:seccion]
+      const gotoMatch = aiText.match(/\[GOTO:(.*?)\]/);
+      if (gotoMatch) {
+        const section = gotoMatch[1].trim().toLowerCase();
+        const route = sectionRoutes[section];
+        
+        if (route) {
+          console.log(`COOPIA navegando a: ${route}`);
+          navigate(route);
+          // Limpiamos el comando del texto para que el usuario no lo vea
+          aiText = aiText.replace(/\[GOTO:.*?\]/g, '').trim();
+        }
+      }
+      
+      setMessages(prev => [...prev, { ...data, text: aiText }]);
+    } catch (error) {
+      console.error('Error en COOPIA:', error);
+      const serverError = error.response?.data?.error || "Hubo un error al conectar con mis sistemas.";
+      setMessages(prev => [...prev, { 
+        text: serverError, 
+        isBot: true 
       }]);
-    }, 600);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -38,15 +81,16 @@ const AIChatbot = () => {
       {isOpen && (
         <div className="mb-4 w-80 h-96 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
-          <div className="p-4 bg-emerald-600 flex items-center justify-between">
+          <div className="p-4 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-white/20 rounded-lg">
-                <Bot size={18} className="text-white" />
+              <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                <Zap size={18} className="text-emerald-500" />
               </div>
               <div>
-                <p className="text-xs font-black text-white uppercase tracking-wider leading-none">Asistente IA</p>
-                <p className="text-[10px] text-emerald-100 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full animate-pulse"></span> En línea
+                <p className="text-xs font-black text-white uppercase tracking-widest leading-none">COOPIA <span className="text-[8px] text-emerald-500 ml-1 opacity-50">v1.5</span></p>
+                <p className="text-[10px] text-zinc-500 flex items-center gap-1 mt-1">
+                  <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${isLoading ? 'bg-amber-500' : 'bg-emerald-500'}`}></span> 
+                  {isLoading ? 'Analizando...' : 'Sistema Activo'}
                 </p>
               </div>
             </div>
@@ -66,16 +110,27 @@ const AIChatbot = () => {
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`flex ${msg.isBot ? 'justify-start' : 'justify-end'}`}
+                className={`flex ${msg.isBot ? 'justify-start' : 'justify-end animate-in slide-in-from-right-2 duration-300'}`}
               >
-                <div className={`max-w-[80%] p-3 rounded-2xl text-xs leading-relaxed ${msg.isBot
-                    ? 'bg-zinc-800 text-zinc-300 rounded-tl-none'
-                    : 'bg-emerald-600 text-white rounded-tr-none'
+                <div className={`max-w-[85%] p-3 rounded-2xl text-[11px] leading-relaxed shadow-sm ${msg.isBot
+                    ? 'bg-zinc-800/50 text-zinc-200 border border-zinc-700/50 rounded-tl-none'
+                    : 'bg-emerald-500 text-black font-medium rounded-tr-none'
                   }`}>
                   {msg.text}
                 </div>
               </div>
             ))}
+            {isLoading && (
+              <div className="flex justify-start animate-pulse">
+                <div className="bg-zinc-800/50 p-3 rounded-2xl rounded-tl-none border border-zinc-700/50">
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 bg-zinc-500 rounded-full"></div>
+                    <div className="w-1 h-1 bg-zinc-500 rounded-full animate-bounce"></div>
+                    <div className="w-1 h-1 bg-zinc-500 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Input */}
