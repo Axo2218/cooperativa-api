@@ -138,7 +138,7 @@ function App() {
             </p>
 
             <div className="flex flex-wrap justify-center gap-2 mt-2">
-              {['React 18', 'Node.js', 'PostgreSQL', 'Tailwind CSS', 'Express', 'Recharts'].map(tech => (
+              {['React 18', 'Node.js', 'PostgreSQL', 'Tailwind CSS', 'Express', 'Recharts', 'Gemini 1.5 Flash', 'Leaflet'].map(tech => (
                 <span key={tech} className="text-[8px] font-bold bg-zinc-900/50 text-zinc-500 px-2 py-1 rounded-md border border-zinc-800/50 hover:border-emerald-500/30 hover:text-emerald-500 transition-all cursor-default">
                   {tech}
                 </span>
