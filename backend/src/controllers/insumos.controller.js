@@ -9,22 +9,26 @@ const getInsumos = async (req, res) => {
 
         if (inst_id) {
             query = `
-                SELECT i.ins_id, i.ins_nombre, i.ins_categoria, i.ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus,
+                SELECT i.ins_id, i.ins_nombre, c.cat_ins_nombre as ins_categoria, u.uni_nombre as ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus, i.ins_fk_categoria, i.ins_fk_unidad,
                        COALESCE(inv.inv_cantidad_actual, 0) AS ins_stock_actual,
                        0 AS ins_stock_minimo
                 FROM insumo i
+                LEFT JOIN categoria_insumo c ON i.ins_fk_categoria = c.cat_ins_id
+                LEFT JOIN unidad_medida u ON i.ins_fk_unidad = u.uni_id
                 LEFT JOIN inventario_insumos inv ON i.ins_id = inv.inv_fk_insumo AND inv.inv_fk_instalacion = $1
                 ORDER BY i.ins_id ASC
             `;
             params = [inst_id];
         } else {
             query = `
-                SELECT i.ins_id, i.ins_nombre, i.ins_categoria, i.ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus,
+                SELECT i.ins_id, i.ins_nombre, c.cat_ins_nombre as ins_categoria, u.uni_nombre as ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus, i.ins_fk_categoria, i.ins_fk_unidad,
                        SUM(COALESCE(inv.inv_cantidad_actual, 0)) AS ins_stock_actual,
                        0 AS ins_stock_minimo
                 FROM insumo i
+                LEFT JOIN categoria_insumo c ON i.ins_fk_categoria = c.cat_ins_id
+                LEFT JOIN unidad_medida u ON i.ins_fk_unidad = u.uni_id
                 LEFT JOIN inventario_insumos inv ON i.ins_id = inv.inv_fk_insumo
-                GROUP BY i.ins_id, i.ins_nombre, i.ins_categoria, i.ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus
+                GROUP BY i.ins_id, i.ins_nombre, c.cat_ins_nombre, u.uni_nombre, i.ins_costo_unitario_referencia, i.ins_estatus, i.ins_fk_categoria, i.ins_fk_unidad
                 ORDER BY i.ins_id ASC
             `;
         }
@@ -42,13 +46,15 @@ const getInsumoById = async (req, res) => {
     try {
         const { id } = req.params;
         const result = await pool.query(`
-            SELECT i.ins_id, i.ins_nombre, i.ins_categoria, i.ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus,
+            SELECT i.ins_id, i.ins_nombre, c.cat_ins_nombre as ins_categoria, u.uni_nombre as ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus, i.ins_fk_categoria, i.ins_fk_unidad,
                    SUM(COALESCE(inv.inv_cantidad_actual, 0)) AS ins_stock_actual,
                    0 AS ins_stock_minimo
             FROM insumo i
+            LEFT JOIN categoria_insumo c ON i.ins_fk_categoria = c.cat_ins_id
+            LEFT JOIN unidad_medida u ON i.ins_fk_unidad = u.uni_id
             LEFT JOIN inventario_insumos inv ON i.ins_id = inv.inv_fk_insumo
             WHERE i.ins_id = $1
-            GROUP BY i.ins_id, i.ins_nombre, i.ins_categoria, i.ins_unidad_medida, i.ins_costo_unitario_referencia, i.ins_estatus
+            GROUP BY i.ins_id, i.ins_nombre, c.cat_ins_nombre, u.uni_nombre, i.ins_costo_unitario_referencia, i.ins_estatus, i.ins_fk_categoria, i.ins_fk_unidad
         `, [id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Insumo no encontrado' });
         res.json(result.rows[0]);
@@ -63,16 +69,16 @@ const createInsumo = async (req, res) => {
     try {
         const {
             ins_nombre,
-            ins_categoria,
-            ins_unidad_medida,
+            ins_fk_categoria,
+            ins_fk_unidad,
             ins_costo_unitario_referencia
         } = req.body;
 
         const result = await pool.query(
             `INSERT INTO insumo 
-            (ins_nombre, ins_categoria, ins_unidad_medida, ins_costo_unitario_referencia) 
+            (ins_nombre, ins_fk_categoria, ins_fk_unidad, ins_costo_unitario_referencia) 
             VALUES ($1, $2, $3, COALESCE($4, 0)) RETURNING *`,
-            [ins_nombre, ins_categoria, ins_unidad_medida, ins_costo_unitario_referencia || 0]
+            [ins_nombre, ins_fk_categoria, ins_fk_unidad, ins_costo_unitario_referencia || 0]
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -87,19 +93,19 @@ const updateInsumo = async (req, res) => {
         const { id } = req.params;
         const {
             ins_nombre,
-            ins_categoria,
-            ins_unidad_medida,
+            ins_fk_categoria,
+            ins_fk_unidad,
             ins_costo_unitario_referencia
         } = req.body;
 
         const result = await pool.query(
             `UPDATE insumo 
             SET ins_nombre = $1, 
-                ins_categoria = $2, 
-                ins_unidad_medida = $3, 
+                ins_fk_categoria = $2, 
+                ins_fk_unidad = $3, 
                 ins_costo_unitario_referencia = $4
             WHERE ins_id = $5 RETURNING *`,
-            [ins_nombre, ins_categoria, ins_unidad_medida, ins_costo_unitario_referencia || 0, id]
+            [ins_nombre, ins_fk_categoria, ins_fk_unidad, ins_costo_unitario_referencia || 0, id]
         );
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Insumo no encontrado' });

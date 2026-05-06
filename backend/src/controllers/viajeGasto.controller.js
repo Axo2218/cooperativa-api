@@ -9,11 +9,12 @@ const getGastos = async (req, res) => {
                 v.via_fecha_salida,
                 v.via_estatus,
                 i.ins_nombre,
-                i.ins_unidad_medida,
+                u.uni_nombre as ins_unidad_medida,
                 (g.gas_cantidad * g.gas_precio_unitario) AS gas_subtotal
             FROM viaje_gasto g
             LEFT JOIN viaje v ON g.gas_fk_viaje = v.via_id
             LEFT JOIN insumo i ON g.gas_fk_insumo = i.ins_id
+            LEFT JOIN unidad_medida u ON i.ins_fk_unidad = u.uni_id
             WHERE v.via_archivado = false OR v.via_estatus = 'Completado'
             ORDER BY g.gas_id DESC
             LIMIT 100
@@ -52,10 +53,11 @@ const getGastosByViajeId = async (req, res) => {
             SELECT 
                 g.*, 
                 i.ins_nombre,
-                i.ins_unidad_medida,
+                u.uni_nombre as ins_unidad_medida,
                 (g.gas_cantidad * g.gas_precio_unitario) AS gas_subtotal
             FROM viaje_gasto g
             LEFT JOIN insumo i ON g.gas_fk_insumo = i.ins_id
+            LEFT JOIN unidad_medida u ON i.ins_fk_unidad = u.uni_id
             WHERE g.gas_fk_viaje = $1
             ORDER BY g.gas_id ASC
         `, [viajeId]);

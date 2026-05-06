@@ -22,8 +22,8 @@ const InsumosCRUD = () => {
   
   const [formData, setFormData] = useState({
     ins_nombre: '',
-    ins_categoria: '',
-    ins_unidad_medida: 'Piezas',
+    ins_fk_categoria: '',
+    ins_fk_unidad: '',
     ins_costo_unitario_referencia: 0,
     ins_stock_actual: 0,
     ins_stock_minimo: 0
@@ -74,8 +74,8 @@ const InsumosCRUD = () => {
       setCurrentInsumo(insumo);
       setFormData({
         ins_nombre: insumo.ins_nombre || '',
-        ins_categoria: insumo.ins_categoria || '',
-        ins_unidad_medida: insumo.ins_unidad_medida || 'Piezas',
+        ins_fk_categoria: insumo.ins_fk_categoria || '',
+        ins_fk_unidad: insumo.ins_fk_unidad || '',
         ins_costo_unitario_referencia: insumo.ins_costo_unitario_referencia || 0,
         ins_stock_actual: insumo.ins_stock_actual || 0,
         ins_stock_minimo: insumo.ins_stock_minimo || 0
@@ -84,8 +84,8 @@ const InsumosCRUD = () => {
       setCurrentInsumo(null);
       setFormData({
         ins_nombre: '',
-        ins_categoria: '',
-        ins_unidad_medida: 'Piezas',
+        ins_fk_categoria: '',
+        ins_fk_unidad: '',
         ins_costo_unitario_referencia: 0,
         ins_stock_actual: 0,
         ins_stock_minimo: 0
@@ -324,15 +324,15 @@ const InsumosCRUD = () => {
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-zinc-300">Categoría *</label>
                   <select
-                    name="ins_categoria"
-                    value={formData.ins_categoria}
+                    name="ins_fk_categoria"
+                    value={formData.ins_fk_categoria}
                     onChange={handleInputChange}
                     required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
                   >
                     <option value="">Seleccione categoría...</option>
                     {categorias.map(c => (
-                      <option key={c.cat_id} value={c.cat_nombre}>{c.cat_nombre}</option>
+                      <option key={c.cat_ins_id || c.cat_id} value={c.cat_ins_id || c.cat_id}>{c.cat_ins_nombre || c.cat_nombre}</option>
                     ))}
                   </select>
                 </div>
@@ -340,15 +340,15 @@ const InsumosCRUD = () => {
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-zinc-300">Unidad de Medida *</label>
                   <select
-                    name="ins_unidad_medida"
-                    value={formData.ins_unidad_medida}
+                    name="ins_fk_unidad"
+                    value={formData.ins_fk_unidad}
                     onChange={handleInputChange}
                     required
                     className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
                   >
                     <option value="">Seleccione unidad...</option>
                     {unidades.map(u => (
-                      <option key={u.uni_id} value={u.uni_nombre}>{u.uni_nombre}</option>
+                      <option key={u.uni_id} value={u.uni_id}>{u.uni_nombre}</option>
                     ))}
                   </select>
                 </div>

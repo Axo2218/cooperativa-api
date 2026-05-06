@@ -5,9 +5,10 @@ const getInsumosViaje = async (req, res) => {
     try {
         const { id } = req.params; // via_id
         const result = await pool.query(`
-            SELECT vi.*, i.ins_nombre, i.ins_unidad_medida
+            SELECT vi.*, i.ins_nombre, u.uni_nombre as ins_unidad_medida
             FROM viaje_insumo vi
             JOIN insumo i ON vi.vi_fk_insumo = i.ins_id
+            LEFT JOIN unidad_medida u ON i.ins_fk_unidad = u.uni_id
             WHERE vi.vi_fk_viaje = $1
             ORDER BY vi.vi_id DESC
         `, [id]);
@@ -23,9 +24,11 @@ const getInventarioDisponible = async (req, res) => {
     try {
         const { id_bodega } = req.params;
         const result = await pool.query(`
-            SELECT inv.*, i.ins_nombre, i.ins_unidad_medida, i.ins_categoria, i.ins_costo_unitario_referencia
+            SELECT inv.*, i.ins_nombre, u.uni_nombre as ins_unidad_medida, c.cat_ins_nombre as ins_categoria, i.ins_costo_unitario_referencia
             FROM inventario_insumos inv
             JOIN insumo i ON inv.inv_fk_insumo = i.ins_id
+            LEFT JOIN categoria_insumo c ON i.ins_fk_categoria = c.cat_ins_id
+            LEFT JOIN unidad_medida u ON i.ins_fk_unidad = u.uni_id
             WHERE inv.inv_fk_instalacion = $1
         `, [id_bodega]);
         res.json(result.rows);
