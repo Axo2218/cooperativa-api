@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../services/api';
-import { Plus, Edit2, Trash2, X, AlertTriangle, ShoppingCart, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, AlertTriangle, ShoppingCart, DollarSign, Download } from 'lucide-react';
+import { generateVentaPDF } from '../utils/pdfGenerator';
 
 const VentaCRUD = () => {
   const [ventas, setVentas] = useState([]);
@@ -155,6 +156,18 @@ const VentaCRUD = () => {
     });
   };
 
+  const handleDownloadPDF = async (venta) => {
+    try {
+      // Intentamos usar la ruta general que ya existe en el sistema
+      const { data } = await axios.get(`/detalleVentas/venta/${venta.ven_id}`);
+      generateVentaPDF(venta, data);
+    } catch (error) {
+      console.error('Error al obtener detalles para el PDF:', error);
+      // Si falla, igual generamos el PDF sin detalles
+      generateVentaPDF(venta, []);
+    }
+  };
+
   return (
     <div className="p-6 bg-zinc-900 min-h-screen text-zinc-400 font-sans">
       <div className="max-w-7xl mx-auto">
@@ -207,6 +220,13 @@ const VentaCRUD = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => handleDownloadPDF(reg)}
+                          className="text-zinc-400 hover:text-blue-500 transition-colors p-1"
+                          title="Descargar Recibo PDF"
+                        >
+                          <Download size={18} />
+                        </button>
                         <button
                           onClick={() => openModal(reg)}
                           className="text-zinc-400 hover:text-emerald-500 transition-colors p-1"

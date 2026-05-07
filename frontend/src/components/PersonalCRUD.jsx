@@ -14,6 +14,9 @@ const PersonalCRUD = () => {
   const [detailsData, setDetailsData] = useState(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isEditingRole, setIsEditingRole] = useState(false);
+  const [editRoleValue, setEditRoleValue] = useState('');
+  const [editSalaryValue, setEditSalaryValue] = useState('');
   
   // Estados para ordenamiento
   const [sortConfig, setSortConfig] = useState({ key: 'per_id', direction: 'desc' });
@@ -32,7 +35,8 @@ const PersonalCRUD = () => {
     per_es_socio: false,
     per_numero_socio: '',
     per_certificado_aportacion: '',
-    per_auth_uuid: ''
+    per_auth_uuid: '',
+    per_salario_base: 7468
   });
 
   useEffect(() => {
@@ -100,7 +104,8 @@ const PersonalCRUD = () => {
         per_es_socio: registro.per_es_socio || false,
         per_numero_socio: registro.per_numero_socio || '',
         per_certificado_aportacion: registro.per_certificado_aportacion || '',
-        per_auth_uuid: registro.per_auth_uuid || ''
+        per_auth_uuid: registro.per_auth_uuid || '',
+        per_salario_base: registro.per_salario_base || 7468
       });
     } else {
       setCurrentRegistro(null);
@@ -117,7 +122,8 @@ const PersonalCRUD = () => {
         per_es_socio: false,
         per_numero_socio: '',
         per_certificado_aportacion: '',
-        per_auth_uuid: ''
+        per_auth_uuid: '',
+        per_salario_base: 7468
       });
     }
     setIsModalOpen(true);
@@ -160,6 +166,27 @@ const PersonalCRUD = () => {
     setIsDetailsModalOpen(false);
     setDetailsData(null);
     setCurrentRegistro(null);
+  };
+
+  const handleSaveRoleSalary = async () => {
+    try {
+      const dataToSubmit = { 
+        ...detailsData.personal,
+        per_fk_rol: editRoleValue || detailsData.personal.per_fk_rol,
+        per_salario_base: editSalaryValue !== '' ? editSalaryValue : detailsData.personal.per_salario_base
+      };
+      
+      await axios.put(`/personal/${currentRegistro.per_id}`, dataToSubmit);
+      
+      // Update local state to reflect changes without reloading the whole modal
+      const { data } = await axios.get(`/personal/detalles/${currentRegistro.per_id}`);
+      setDetailsData(data);
+      fetchPersonal(); // refresh the background list
+      setIsEditingRole(false);
+    } catch (error) {
+      console.error('Error al actualizar rol y salario:', error);
+      setErrorMsg('No se pudo actualizar el rol y salario.');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -390,17 +417,28 @@ const PersonalCRUD = () => {
 
       {/* Modal Formulario */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 overflow-y-auto">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden my-8">
-            <div className="flex justify-between items-center p-6 border-b border-zinc-800">
-              <h2 className="text-xl font-bold text-white">
-                {currentRegistro ? 'Editar Personal' : 'Registrar Personal'}
-              </h2>
-              <button onClick={closeModal} className="text-zinc-400 hover:text-white transition-colors">
-                <X size={24} />
-              </button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[150] p-4 overflow-y-auto">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-3xl shadow-2xl overflow-hidden my-8 animate-in zoom-in-95 fade-in duration-300 ring-1 ring-white/5 flex flex-col">
+            <div className="relative p-6 bg-gradient-to-r from-zinc-950 to-zinc-900 border-b border-zinc-800 shrink-0">
+                <div className="flex justify-between items-center gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                            <Users size={24} strokeWidth={2} />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-white tracking-tighter uppercase">{currentRegistro ? 'Editar' : 'Registrar'} <span className="text-blue-500">Personal</span></h3>
+                            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] mt-1">Gestión de RRHH</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={closeModal} 
+                        className="text-zinc-500 hover:text-white transition-all bg-zinc-800 hover:bg-zinc-700 p-2.5 rounded-xl group"
+                    >
+                        <X size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+                    </button>
+                </div>
             </div>
-            <form onSubmit={handleSubmit} className="p-6">
+            <form onSubmit={handleSubmit} className="p-8">
               
               {errorMsg && (
                 <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
@@ -462,6 +500,10 @@ const PersonalCRUD = () => {
                           <option key={r.rol_id} value={r.rol_id}>{r.rol_nombre}</option>
                         ))}
                       </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-zinc-300">Salario Mensual Base (MXN) *</label>
+                      <input type="number" name="per_salario_base" value={formData.per_salario_base} onChange={handleInputChange} required className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors" />
                     </div>
                     <div className="flex items-center gap-3 mt-6">
                       <input type="checkbox" id="per_estatus" name="per_estatus" checked={formData.per_estatus} onChange={handleInputChange} className="w-5 h-5 accent-emerald-500 rounded bg-zinc-800 border-zinc-700" />
@@ -559,14 +601,62 @@ const PersonalCRUD = () => {
                   </div>
                   
                   <div className="p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500">
-                        <Briefcase size={16} />
+                    <div className="flex items-start justify-between gap-3 relative group">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-500 mt-1">
+                          <Briefcase size={16} />
+                        </div>
+                        <div className="flex-1">
+                          {isEditingRole ? (
+                            <div className="space-y-3 bg-zinc-950 p-3 rounded-lg border border-emerald-500/30">
+                              <div>
+                                <label className="text-[9px] text-zinc-500 uppercase font-bold mb-1 block">Puesto / Rol</label>
+                                <select 
+                                  value={editRoleValue || detailsData?.personal.per_fk_rol || ''}
+                                  onChange={(e) => setEditRoleValue(e.target.value)}
+                                  className="w-full bg-zinc-900 border border-zinc-700 rounded text-xs text-white p-1 focus:outline-none focus:border-emerald-500"
+                                >
+                                  {roles.map(r => (
+                                    <option key={r.rol_id} value={r.rol_id}>{r.rol_nombre}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[9px] text-zinc-500 uppercase font-bold mb-1 block">Salario Base (MXN)</label>
+                                <input 
+                                  type="number"
+                                  value={editSalaryValue !== '' ? editSalaryValue : detailsData?.personal.per_salario_base || ''}
+                                  onChange={(e) => setEditSalaryValue(e.target.value)}
+                                  className="w-full bg-zinc-900 border border-zinc-700 rounded text-xs text-white p-1 focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2 mt-2">
+                                <button onClick={() => setIsEditingRole(false)} className="text-[9px] text-zinc-400 hover:text-white px-2 py-1 rounded border border-zinc-700 bg-zinc-800">Cancelar</button>
+                                <button onClick={handleSaveRoleSalary} className="text-[9px] text-white px-2 py-1 rounded border border-emerald-500/50 bg-emerald-600 hover:bg-emerald-500">Guardar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-[9px] text-zinc-500 uppercase font-bold">Puesto / Rol Actual</p>
+                              <p className="text-sm font-black text-white uppercase">{detailsData?.personal.rol_nombre}</p>
+                              <p className="text-[10px] text-emerald-400 font-bold mt-1 tracking-wider">Salario Base: ${parseFloat(detailsData?.personal.per_salario_base || 0).toLocaleString()} MXN</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[9px] text-zinc-500 uppercase font-bold">Puesto / Rol</p>
-                        <p className="text-xs font-black text-white uppercase">{detailsData?.personal.rol_nombre}</p>
-                      </div>
+                      {!isEditingRole && (
+                        <button 
+                          onClick={() => {
+                            setEditRoleValue(detailsData?.personal.per_fk_rol);
+                            setEditSalaryValue(detailsData?.personal.per_salario_base);
+                            setIsEditingRole(true);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg absolute right-0 top-0"
+                          title="Editar Rol y Salario"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">

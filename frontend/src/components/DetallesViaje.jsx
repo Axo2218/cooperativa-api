@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Anchor, User, Map, DollarSign, Ship, MapPin, CheckCircle, XCircle, Users, Plus, FileText, Fish, TrendingUp, BarChart3, Package, ShoppingCart, AlertCircle, Navigation } from 'lucide-react';
+import { ArrowLeft, Anchor, User, Map, DollarSign, Ship, MapPin, CheckCircle, XCircle, Users, Plus, FileText, Fish, TrendingUp, BarChart3, Package, ShoppingCart, AlertCircle, Navigation, X } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { MapContainer, TileLayer, Marker, useMapEvents, Polygon } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -8,6 +8,7 @@ import L from 'leaflet';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ConfirmationModal from './ConfirmationModal';
+import { generateLiquidacionPDF } from '../utils/pdfGenerator';
 
 // Configuración de iconos para Leaflet (evitar errores de Vite)
 const shipIcon = new L.DivIcon({
@@ -85,7 +86,8 @@ const RendimientoHistorial = ({ isFullWidth, dataHistory }) => (
     </div>
 );
 
-const DetallesViaje = ({ viaje, volver }) => {
+const DetallesViaje = ({ viaje: initialViaje, volver }) => {
+    const [viaje, setViaje] = useState(initialViaje);
     // --- ESTADOS DE TRIPULACIÓN Y CATÁLOGO ---
     const [tripulacion, setTripulacion] = useState([
         { id: 'cap', nombre: viaje.capitan, rol: 'Capitán (Líder)' }
@@ -150,12 +152,20 @@ const DetallesViaje = ({ viaje, volver }) => {
                         via_per_id: t.via_per_id, // ID del registro en viaje_personal
                         nombre: t.personal_nombre,
                         rol: t.rol_nombre,
-                        rol_id: t.via_per_fk_rol
+                        rol_id: t.via_per_fk_rol,
+                        salario_base: t.per_salario_base,
+                        rol_puntos_reparto: t.rol_puntos_reparto,
+                        enrolado: t.via_per_enrolado
                     }));
                 } catch (e) { console.error("Error al cargar tripulacion del viaje:", e); }
 
                 // Mantener al capitán
-                const tripulacionInicial = [{ id: 'cap', nombre: viaje.capitan, rol: 'Capitán (Líder)' }, ...tripDB];
+                const tripulacionInicial = [{ 
+                    id: 'cap', 
+                    nombre: viaje.capitan, 
+                    rol: 'Capitán (Líder)',
+                    salario_base: viaje.capitan_salario_base || 0 
+                }, ...tripDB];
                 setTripulacion(tripulacionInicial);
 
                 // 2. Cargar Personal Disponible (Excluyendo ocupados)
@@ -181,7 +191,9 @@ const DetallesViaje = ({ viaje, volver }) => {
                         .filter(p => !ocupados.has(p.per_id) && p.per_fk_cooperativa === viaje.emb_fk_cooperativa)
                         .map(p => ({
                             per_id: p.per_id,
-                            nombre_completo: `${p.per_nombre} ${p.per_apellidos}`
+                            nombre_completo: `${p.per_nombre} ${p.per_apellidos}`,
+                            salario_base: p.per_salario_base || 0,
+                            rol_id: p.per_fk_rol
                         }));
                 } catch (e) { console.error("Error al cargar personal:", e); }
 
@@ -258,13 +270,46 @@ const DetallesViaje = ({ viaje, volver }) => {
                 via_per_fk_rol: nuevoTripulante.rol_id
             });
 
+            const personaSeleccionada = personalDisponible.find(p => p.per_id === Number(nuevoTripulante.id_personal));
+            const salarioBase = personaSeleccionada ? parseFloat(personaSeleccionada.salario_base || 0) : 0;
+
             setTripulacion([...tripulacion, {
                 id: Number(nuevoTripulante.id_personal),
                 via_per_id: res.data.via_per_id,
                 nombre: nuevoTripulante.nombre,
                 rol: nuevoTripulante.rol_nombre,
-                rol_id: nuevoTripulante.rol_id
+                rol_id: nuevoTripulante.rol_id,
+                salario_base: salarioBase
             }]);
+
+            // Lógica para actualizar presupuesto estimado
+            if (salarioBase > 0) {
+                let diasViaje = 1;
+                const fechaSalida = viaje.via_fecha_salida ? new Date(viaje.via_fecha_salida) : new Date();
+                const fechaEstimada = viaje.via_fecha_estimada ? new Date(viaje.via_fecha_estimada) : null;
+                
+                if (fechaEstimada && fechaEstimada > fechaSalida) {
+                    diasViaje = Math.max(1, Math.ceil(Math.abs(fechaEstimada - fechaSalida) / (1000 * 60 * 60 * 24)));
+                }
+
+                const costoEstimado = (salarioBase / 30) * diasViaje;
+                const presupuestoActual = parseFloat(viaje.via_presupuesto_estimado || 0);
+                const nuevoPresupuesto = presupuestoActual + costoEstimado;
+
+                console.log(`Calculando presupuesto: ${presupuestoActual} + (${salarioBase}/30 * ${diasViaje}) = ${nuevoPresupuesto}`);
+
+                try {
+                    await api.put(`/viajes/${viaje.via_id}`, {
+                        ...viaje,
+                        via_presupuesto_estimado: nuevoPresupuesto
+                    });
+                    setViaje(prev => ({ ...prev, via_presupuesto_estimado: nuevoPresupuesto }));
+                    toast.success(`Presupuesto actualizado: +$${costoEstimado.toFixed(2)}`);
+                } catch (err) {
+                    console.error("Error al actualizar el presupuesto:", err);
+                    toast.error("El tripulante se asignó pero no se pudo actualizar el presupuesto.");
+                }
+            }
 
             setNuevoTripulante({ id_personal: '', nombre: '', rol_id: '', rol_nombre: '' });
             setMostrarModalTripulacion(false);
@@ -272,6 +317,22 @@ const DetallesViaje = ({ viaje, volver }) => {
         } catch (error) {
             console.error("Error al asignar tripulante:", error);
             toast.error(error.response?.data?.error || "Error al asignar el tripulante.");
+        }
+    };
+
+    const toggleAsistencia = async (id, via_per_id, actualEstado) => {
+        if (!['En Preparación'].includes(viaje.via_estatus)) return;
+        try {
+            await api.put(`/viajes-personal/${via_per_id}`, { via_per_enrolado: !actualEstado });
+            setTripulacion(prev => prev.map(t => t.via_per_id === via_per_id ? { ...t, enrolado: !actualEstado } : t));
+            if (!actualEstado) {
+                toast.success(`Asistencia confirmada.`);
+            } else {
+                toast.success(`Asistencia removida.`);
+            }
+        } catch (error) {
+            console.error("Error al confirmar asistencia:", error);
+            toast.error("Error al actualizar la asistencia.");
         }
     };
 
@@ -284,10 +345,38 @@ const DetallesViaje = ({ viaje, volver }) => {
 
         try {
             await api.delete(`/viajes-personal/${via_per_id}`);
-            setTripulacion(tripulacion.filter(t => t.id !== id));
-            toast.success("Tripulante desembarcado.");
+            
+            // Reajustar presupuesto si tenía salario base
+            const tripToRemove = tripulacion.find(t => t.via_per_id === via_per_id);
+            if (tripToRemove && parseFloat(tripToRemove.salario_base || 0) > 0) {
+                let diasViaje = 1;
+                const fechaSalida = viaje.via_fecha_salida ? new Date(viaje.via_fecha_salida) : new Date();
+                const fechaEstimada = viaje.via_fecha_estimada ? new Date(viaje.via_fecha_estimada) : null;
+                
+                if (fechaEstimada && fechaEstimada > fechaSalida) {
+                    diasViaje = Math.max(1, Math.ceil(Math.abs(fechaEstimada - fechaSalida) / (1000 * 60 * 60 * 24)));
+                }
+                
+                const costoAhorrado = (parseFloat(tripToRemove.salario_base) / 30) * diasViaje;
+                const presupuestoActual = parseFloat(viaje.via_presupuesto_estimado || 0);
+                const nuevoPresupuesto = Math.max(0, presupuestoActual - costoAhorrado);
+                
+                try {
+                    await api.put(`/viajes/${viaje.via_id}`, {
+                        ...viaje,
+                        via_presupuesto_estimado: nuevoPresupuesto
+                    });
+                    setViaje(prev => ({ ...prev, via_presupuesto_estimado: nuevoPresupuesto }));
+                    toast.success(`Presupuesto actualizado: -$${costoAhorrado.toFixed(2)}`);
+                } catch (err) {
+                    console.error("Error al reajustar el presupuesto:", err);
+                }
+            }
+
+            setTripulacion(tripulacion.filter(t => t.via_per_id !== via_per_id));
+            toast.success("Tripulante retirado del viaje.");
         } catch (error) {
-            console.error("Error al desembarcar tripulante:", error);
+            console.error("Error al retirar al tripulante:", error);
             toast.error("Error al eliminar el tripulante.");
         }
     };
@@ -622,7 +711,15 @@ const DetallesViaje = ({ viaje, volver }) => {
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div className="md:col-span-3 p-8 bg-zinc-900/80 rounded-2xl border border-zinc-800 flex items-center justify-between shadow-inner">
                                             <div><p className="text-zinc-500 text-xs font-bold uppercase mb-2">Ganancia Neta (Margen Real)</p><p className={`text-6xl font-black ${parseFloat(viaje.via_ganancia_neta) >= 0 ? 'text-white' : 'text-red-500'}`}>${parseFloat(viaje.via_ganancia_neta || 0).toLocaleString()}</p></div>
-                                            <div className="text-right"><p className="text-zinc-600 text-xs font-bold uppercase mb-1">Rentabilidad</p><p className="text-emerald-500 font-black text-4xl">{((parseFloat(viaje.via_ganancia_neta) / parseFloat(viaje.via_total_ingresos || 1)) * 100).toFixed(1)}%</p></div>
+                                            <div className="text-right flex flex-col items-end gap-3">
+                                              <div><p className="text-zinc-600 text-xs font-bold uppercase mb-1">Rentabilidad</p><p className="text-emerald-500 font-black text-4xl">{((parseFloat(viaje.via_ganancia_neta) / parseFloat(viaje.via_total_ingresos || 1)) * 100).toFixed(1)}%</p></div>
+                                              <button 
+                                                onClick={() => generateLiquidacionPDF(viaje, capturas, tripulacion)}
+                                                className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-blue-500/20 mt-2 flex items-center gap-2"
+                                              >
+                                                <FileText size={16} /> Descargar Reporte
+                                              </button>
+                                            </div>
                                         </div>
                                         <div className="p-6 bg-zinc-900/50 rounded-2xl border border-zinc-800"><p className="text-amber-500 text-xs font-black uppercase mb-3 opacity-70">Cooperativa</p><p className="text-white font-black text-3xl">${parseFloat(viaje.via_reparto_cooperativa || 0).toLocaleString()}</p></div>
                                         <div className="p-6 bg-zinc-900/50 rounded-2xl border border-zinc-800"><p className="text-blue-500 text-xs font-black uppercase mb-3 opacity-70">Capitán</p><p className="text-white font-black text-3xl">${parseFloat(viaje.via_reparto_capitan || 0).toLocaleString()}</p></div>
@@ -739,9 +836,20 @@ const DetallesViaje = ({ viaje, volver }) => {
                                                     </div>
                                                 </div>
                                                 {tripulante.id !== 'cap' && ['Pendiente', 'En Preparación'].includes(viaje.via_estatus) && (
-                                                    <button onClick={() => eliminarTripulante(tripulante.id, tripulante.via_per_id)} className="text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all" title="Desembarcar">
-                                                        <XCircle size={16} />
-                                                    </button>
+                                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                                        {viaje.via_estatus === 'En Preparación' && (
+                                                            <button 
+                                                                onClick={() => toggleAsistencia(tripulante.id, tripulante.via_per_id, tripulante.enrolado)} 
+                                                                className={`p-1 rounded-full border transition-colors ${tripulante.enrolado ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'bg-zinc-800 text-zinc-500 border-zinc-700 hover:text-emerald-500'}`} 
+                                                                title={tripulante.enrolado ? "Asistencia Confirmada" : "Confirmar Asistencia"}
+                                                            >
+                                                                <CheckCircle size={16} />
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => eliminarTripulante(tripulante.id, tripulante.via_per_id)} className="text-zinc-600 hover:text-red-500 transition-colors" title="Desembarcar">
+                                                            <XCircle size={16} />
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </div>
                                         ))}
@@ -884,12 +992,53 @@ const DetallesViaje = ({ viaje, volver }) => {
 
             {/* 5. MODAL CON DESPLEGABLE DESDE LA BD */}
             {mostrarModalTripulacion && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 px-4">
-                    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-sm p-6 relative shadow-2xl">
-                        <button onClick={() => setMostrarModalTripulacion(false)} className="absolute top-4 right-4 text-zinc-400 hover:text-white"><XCircle size={20} /></button>
-                        <h3 className="text-lg font-bold text-white mb-4">Alistar Tripulante</h3>
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[150] px-4">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 ring-1 ring-white/5 flex flex-col">
+                        <div className="relative p-6 bg-gradient-to-r from-zinc-950 to-zinc-900 border-b border-zinc-800 shrink-0">
+                            <div className="flex justify-between items-center gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-inner">
+                                        <Users size={24} strokeWidth={2} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-white tracking-tighter uppercase">Alistar <span className="text-emerald-500">Tripulante</span></h3>
+                                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] mt-1">Asignación Operativa</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setMostrarModalTripulacion(false)} 
+                                    className="text-zinc-500 hover:text-white transition-all bg-zinc-800 hover:bg-zinc-700 p-2.5 rounded-xl group"
+                                >
+                                    <X size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+                                </button>
+                            </div>
+                        </div>
 
-                        <form onSubmit={agregarTripulante} className="space-y-6">
+                        <div className="p-8">
+                            <form onSubmit={agregarTripulante} className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-1">Rol a Bordo</label>
+                                <select
+                                    value={nuevoTripulante.rol_id}
+                                    onChange={(e) => {
+                                        const rolSeleccionado = roles.find(r => r.rol_id.toString() === e.target.value);
+                                        setNuevoTripulante({
+                                            id_personal: '', // Resetear persona al cambiar rol
+                                            nombre: '',
+                                            rol_id: e.target.value,
+                                            rol_nombre: rolSeleccionado ? rolSeleccionado.rol_nombre : ''
+                                        });
+                                    }}
+                                    required
+                                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                >
+                                    <option value="" disabled>Selecciona un rol...</option>
+                                    {roles.map(r => (
+                                        <option key={r.rol_id} value={r.rol_id}>{r.rol_nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <div>
                                 <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2 tracking-widest">Personal Disponible</label>
                                 <div className="space-y-2">
@@ -898,7 +1047,8 @@ const DetallesViaje = ({ viaje, volver }) => {
                                         placeholder="🔍 Buscar por nombre..." 
                                         value={busquedaTripulante}
                                         onChange={(e) => setBusquedaTripulante(e.target.value)}
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500 transition-colors"
+                                        disabled={!nuevoTripulante.rol_id}
+                                        className={`w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500 transition-colors ${!nuevoTripulante.rol_id ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     />
                                     <select
                                         value={nuevoTripulante.id_personal}
@@ -911,10 +1061,12 @@ const DetallesViaje = ({ viaje, volver }) => {
                                             });
                                         }}
                                         required
-                                        className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 shadow-inner"
+                                        disabled={!nuevoTripulante.rol_id}
+                                        className={`w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 shadow-inner ${!nuevoTripulante.rol_id ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
-                                        <option value="" disabled>Selecciona un tripulante...</option>
+                                        <option value="" disabled>{!nuevoTripulante.rol_id ? 'Primero selecciona un rol...' : 'Selecciona un tripulante...'}</option>
                                         {personalDisponible
+                                            .filter(p => p.rol_id && p.rol_id.toString() === nuevoTripulante.rol_id.toString())
                                             .filter(p => p.nombre_completo.toLowerCase().includes(busquedaTripulante.toLowerCase()))
                                             .map(p => {
                                                 const yaAsignado = tripulacion.some(t => t.id === p.per_id) || p.per_id === viaje.via_fk_capitan;
@@ -933,44 +1085,40 @@ const DetallesViaje = ({ viaje, volver }) => {
                                     </select>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-400 mb-1">Rol a Bordo</label>
-                                <select
-                                    value={nuevoTripulante.rol_id}
-                                    onChange={(e) => {
-                                        const rolSeleccionado = roles.find(r => r.rol_id.toString() === e.target.value);
-                                        setNuevoTripulante({
-                                            ...nuevoTripulante,
-                                            rol_id: e.target.value,
-                                            rol_nombre: rolSeleccionado ? rolSeleccionado.rol_nombre : ''
-                                        });
-                                    }}
-                                    required
-                                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                >
-                                    <option value="" disabled>Selecciona un rol...</option>
-                                    {roles.map(r => (
-                                        <option key={r.rol_id} value={r.rol_id}>{r.rol_nombre}</option>
-                                    ))}
-                                </select>
-                            </div>
                             <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg transition-all flex justify-center items-center gap-2">
                                 <Plus size={18} /> Asignar a la embarcación
                             </button>
                         </form>
+                        </div>
                     </div>
                 </div>
             )}
             {/* MODAL DE ARRIBO A PUERTO */}
             {mostrarModalLlegada && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] px-4 backdrop-blur-sm">
-                    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-md p-8 shadow-2xl scale-in-center">
-                        <div className="flex items-center gap-3 text-amber-500 mb-6">
-                            <MapPin size={28} />
-                            <h3 className="text-2xl font-black text-white tracking-tight">Registro de Arribo</h3>
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[150] px-4">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300 ring-1 ring-white/5 flex flex-col">
+                        <div className="relative p-6 bg-gradient-to-r from-zinc-950 to-zinc-900 border-b border-zinc-800 shrink-0">
+                            <div className="flex justify-between items-center gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-inner">
+                                        <MapPin size={24} strokeWidth={2} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-white tracking-tighter uppercase">Registro de <span className="text-amber-500">Arribo</span></h3>
+                                        <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] mt-1">Llegada a Puerto</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setMostrarModalLlegada(false)} 
+                                    className="text-zinc-500 hover:text-white transition-all bg-zinc-800 hover:bg-zinc-700 p-2.5 rounded-xl group"
+                                >
+                                    <X size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+                                </button>
+                            </div>
                         </div>
 
-                        <form onSubmit={confirmarLlegada} className="space-y-6">
+                        <div className="p-8">
+                            <form onSubmit={confirmarLlegada} className="space-y-6">
                             <div>
                                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Fecha y Hora de Llegada</label>
                                 <input 
@@ -1009,26 +1157,41 @@ const DetallesViaje = ({ viaje, volver }) => {
                                 <button type="submit" className="flex-[2] bg-amber-600 hover:bg-amber-500 text-white font-black py-3 rounded-xl shadow-lg shadow-amber-600/20 transition-all">Registrar Llegada</button>
                             </div>
                         </form>
+                        </div>
                     </div>
                 </div>
             )}
             {/* MODAL DE EQUIPAMIENTO DE INSUMOS */}
             {mostrarModalInsumos && (
-                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[70] px-4 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden scale-in-center">
-                        <div className="p-8 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-500/10 text-blue-400 rounded-2xl">
-                                    <Package size={32} />
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-start justify-center z-[150] p-4 overflow-y-auto pt-10">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] w-full max-w-5xl shadow-2xl overflow-hidden mb-12 animate-in zoom-in-95 fade-in duration-300 ring-1 ring-white/5 flex flex-col">
+                        <div className="relative p-8 bg-gradient-to-r from-zinc-950 to-zinc-900 border-b border-zinc-800 shrink-0">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shadow-inner">
+                                        <Package size={36} strokeWidth={1.5} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-3xl font-black text-white tracking-tighter uppercase">Equipar <span className="text-blue-500">Embarcación</span></h3>
+                                        <div className="flex items-center gap-3 mt-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span>
+                                                <p className="text-[10px] text-zinc-300 uppercase font-black tracking-widest">Almacén Activo</p>
+                                            </div>
+                                            <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
+                                            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.3em]">
+                                                Inventario: {viaje.id_bodega ? `Bodega #${viaje.id_bodega}` : 'No asignada'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-3xl font-black text-white tracking-tight">Equipar Embarcación</h3>
-                                    <p className="text-zinc-500 text-xs font-medium uppercase tracking-widest mt-1">Inventario de la Cooperativa: {viaje.id_bodega ? `Bodega #${viaje.id_bodega}` : 'No asignada'}</p>
-                                </div>
+                                <button 
+                                    onClick={() => setMostrarModalInsumos(false)} 
+                                    className="text-zinc-500 hover:text-white transition-all bg-zinc-800 hover:bg-zinc-700 p-3 rounded-2xl group"
+                                >
+                                    <X size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                                </button>
                             </div>
-                            <button onClick={() => setMostrarModalInsumos(false)} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors">
-                                <XCircle size={32} />
-                            </button>
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-8 custom-scrollbar">

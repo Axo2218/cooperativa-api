@@ -9,6 +9,7 @@ const getTripulacion = async (req, res) => {
                 v.via_fecha_salida,
                 v.via_estatus,
                 p.per_nombre || ' ' || p.per_apellidos AS personal_nombre,
+                p.per_salario_base,
                 r.rol_nombre,
                 r.rol_puntos_reparto
             FROM viaje_personal vp
@@ -46,6 +47,7 @@ const getTripulacionByViajeId = async (req, res) => {
             SELECT 
                 vp.*, 
                 p.per_nombre || ' ' || p.per_apellidos AS personal_nombre,
+                p.per_salario_base,
                 r.rol_nombre,
                 r.rol_puntos_reparto
             FROM viaje_personal vp
@@ -80,7 +82,7 @@ const createTripulante = async (req, res) => {
             return res.status(400).json({ error: 'Este tripulante ya está enrolado en este viaje.' });
         }
 
-        // Obtener el salario base del personal
+        // Obtener el salario base del personal (ya no actualiza presupuesto aquí para evitar conflictos con frontend)
         const personalRes = await client.query('SELECT per_salario_base FROM personal WHERE per_id = $1', [via_per_fk_personal]);
         const salarioBase = parseFloat(personalRes.rows[0]?.per_salario_base || 0);
 
@@ -91,13 +93,6 @@ const createTripulante = async (req, res) => {
             VALUES ($1, $2, $3) RETURNING *`,
             [via_per_fk_viaje, via_per_fk_personal, via_per_fk_rol]
         );
-
-        // Actualizar Presupuesto del Viaje
-        await client.query(`
-            UPDATE viaje 
-            SET via_presupuesto_estimado = via_presupuesto_estimado + $1
-            WHERE via_id = $2
-        `, [salarioBase, via_per_fk_viaje]);
 
         await client.query('COMMIT');
         res.status(201).json(result.rows[0]);
@@ -131,21 +126,11 @@ const deleteTripulante = async (req, res) => {
             return res.status(404).json({ error: 'Registro de tripulante no encontrado' });
         }
 
-        const { via_per_fk_viaje, per_salario_base } = vpRes.rows[0];
-        const salarioBase = parseFloat(per_salario_base || 0);
-
         // Eliminar
         await client.query('DELETE FROM viaje_personal WHERE via_per_id = $1', [id]);
 
-        // Actualizar Presupuesto
-        await client.query(`
-            UPDATE viaje 
-            SET via_presupuesto_estimado = via_presupuesto_estimado - $1
-            WHERE via_id = $2
-        `, [salarioBase, via_per_fk_viaje]);
-
         await client.query('COMMIT');
-        res.json({ message: 'Tripulante desembarcado del viaje exitosamente', salario_ajustado: salarioBase });
+        res.json({ mensaje: 'Tripulante eliminado correctamente' });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error al eliminar tripulante:', error);
@@ -155,20 +140,29 @@ const deleteTripulante = async (req, res) => {
     }
 };
 
-// Actualizar un rol/asignación de tripulante
+// Actualizar un rol/asignación de tripulante o su estatus de asistencia
 const updateTripulante = async (req, res) => {
     try {
         const { id } = req.params;
-        const { via_per_fk_viaje, via_per_fk_personal, via_per_fk_rol } = req.body;
+        const { via_per_fk_viaje, via_per_fk_personal, via_per_fk_rol, via_per_enrolado } = req.body;
 
-        const result = await pool.query(
-            `UPDATE viaje_personal 
-            SET via_per_fk_viaje = $1, 
-                via_per_fk_personal = $2, 
-                via_per_fk_rol = $3 
-            WHERE via_per_id = $4 RETURNING *`,
-            [via_per_fk_viaje, via_per_fk_personal, via_per_fk_rol, id]
-        );
+        // Construir query dinámicamente según lo que se envíe
+        let queryStr = '';
+        let params = [];
+        
+        if (via_per_enrolado !== undefined) {
+            queryStr = `UPDATE viaje_personal SET via_per_enrolado = $1 WHERE via_per_id = $2 RETURNING *`;
+            params = [via_per_enrolado, id];
+        } else {
+            queryStr = `UPDATE viaje_personal 
+                SET via_per_fk_viaje = $1, 
+                    via_per_fk_personal = $2, 
+                    via_per_fk_rol = $3 
+                WHERE via_per_id = $4 RETURNING *`;
+            params = [via_per_fk_viaje, via_per_fk_personal, via_per_fk_rol, id];
+        }
+
+        const result = await pool.query(queryStr, params);
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Registro de tripulante no encontrado' });
         res.json(result.rows[0]);

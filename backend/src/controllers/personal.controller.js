@@ -45,17 +45,18 @@ const createPersonal = async (req, res) => {
         const {
             per_auth_uuid, per_nombre, per_apellidos, per_curp, per_telefono,
             per_contacto_emergencia, per_estatus, per_fk_rol, per_fk_cooperativa,
-            per_nss, per_es_socio, per_numero_socio, per_certificado_aportacion
+            per_nss, per_es_socio, per_numero_socio, per_certificado_aportacion, per_salario_base
         } = req.body;
 
         const result = await pool.query(
             `INSERT INTO personal 
-            (per_auth_uuid, per_nombre, per_apellidos, per_curp, per_telefono, per_contacto_emergencia, per_estatus, per_fk_rol, per_fk_cooperativa, per_nss, per_es_socio, per_numero_socio, per_certificado_aportacion) 
-            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, true), $8, $9, $10, COALESCE($11, false), $12, $13) RETURNING *`,
+            (per_auth_uuid, per_nombre, per_apellidos, per_curp, per_telefono, per_contacto_emergencia, per_estatus, per_fk_rol, per_fk_cooperativa, per_nss, per_es_socio, per_numero_socio, per_certificado_aportacion, per_salario_base) 
+            VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, true), $8, $9, $10, COALESCE($11, false), $12, $13, $14) RETURNING *`,
             [
                 per_auth_uuid || null, per_nombre, per_apellidos, per_curp || null, per_telefono || null,
                 per_contacto_emergencia || null, per_estatus, per_fk_rol, per_fk_cooperativa,
-                per_nss || null, per_es_socio, per_numero_socio || null, per_certificado_aportacion || null
+                per_nss || null, per_es_socio, per_numero_socio || null, per_certificado_aportacion || null,
+                per_salario_base || 7468
             ]
         );
         res.status(201).json(result.rows[0]);
@@ -72,19 +73,20 @@ const updatePersonal = async (req, res) => {
         const {
             per_auth_uuid, per_nombre, per_apellidos, per_curp, per_telefono,
             per_contacto_emergencia, per_estatus, per_fk_rol, per_fk_cooperativa,
-            per_nss, per_es_socio, per_numero_socio, per_certificado_aportacion
+            per_nss, per_es_socio, per_numero_socio, per_certificado_aportacion, per_salario_base
         } = req.body;
 
         const result = await pool.query(
             `UPDATE personal 
             SET per_auth_uuid = $1, per_nombre = $2, per_apellidos = $3, per_curp = $4, per_telefono = $5, 
                 per_contacto_emergencia = $6, per_estatus = $7, per_fk_rol = $8, per_fk_cooperativa = $9, 
-                per_nss = $10, per_es_socio = $11, per_numero_socio = $12, per_certificado_aportacion = $13 
-            WHERE per_id = $14 RETURNING *`,
+                per_nss = $10, per_es_socio = $11, per_numero_socio = $12, per_certificado_aportacion = $13, per_salario_base = $14
+            WHERE per_id = $15 RETURNING *`,
             [
                 per_auth_uuid || null, per_nombre, per_apellidos, per_curp || null, per_telefono || null,
                 per_contacto_emergencia || null, per_estatus, per_fk_rol, per_fk_cooperativa,
-                per_nss || null, per_es_socio, per_numero_socio || null, per_certificado_aportacion || null, 
+                per_nss || null, per_es_socio, per_numero_socio || null, per_certificado_aportacion || null,
+                per_salario_base || 7468,
                 id
             ]
         );

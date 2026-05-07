@@ -40,14 +40,17 @@ const getViajeById = async (req, res) => {
         const result = await pool.query(`
             SELECT 
                 v.*, 
-                e.emb_nombre AS barco, 
+                e.emb_nombre AS barco,
+                e.emb_matricula,
                 e.emb_categoria,
                 e.emb_capacidad_carga,
                 e.emb_latitud,
                 e.emb_longitud,
                 e.emb_fk_cooperativa,
+                c.coop_nombre AS cooperativa_nombre,
                 c.coop_fk_instalacion AS id_bodega,
                 p.per_nombre || ' ' || p.per_apellidos AS capitan,
+                p.per_salario_base AS capitan_salario_base,
                 z.zona_nombre,
                 z.zona_cuadrante,
                 inst.inst_nombre AS puerto_arribo
@@ -70,60 +73,65 @@ const getViajeById = async (req, res) => {
 // CREAR UN NUEVO VIAJE (Zarpar o planificar)
 const crearViaje = async (req, res) => {
     try {
-        const { 
-            via_fecha_salida, 
-            via_fecha_llegada, 
-            via_estatus, 
-            via_observaciones, 
-            via_fk_embarcacion, 
-            via_fk_capitan, 
-            via_fecha_estimada, 
-            via_presupuesto_estimado, 
-            via_fk_zona 
+        let {
+            via_fecha_salida, via_fecha_llegada, via_estatus, via_observaciones,
+            via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona
         } = req.body;
+
+        // Conversión explícita de tipos para evitar errores de sintaxis en Postgres
+        const fk_embarcacion = via_fk_embarcacion ? parseInt(via_fk_embarcacion) : null;
+        const fk_capitan = via_fk_capitan ? parseInt(via_fk_capitan) : null;
+        const fk_zona = via_fk_zona ? parseInt(via_fk_zona) : null;
+        const presupuesto = via_presupuesto_estimado ? parseFloat(via_presupuesto_estimado) : 0;
+        
+        const fecha_salida = via_fecha_salida || null;
+        const fecha_llegada = via_fecha_llegada || null;
+        const fecha_estimada = via_fecha_estimada || null;
 
         const nuevoViaje = await pool.query(
             `INSERT INTO viaje 
             (via_fecha_salida, via_fecha_llegada, via_estatus, via_observaciones, via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona) 
-            VALUES (COALESCE($1, CURRENT_TIMESTAMP), $2, COALESCE($3, 'Pendiente'), $4, $5, $6, $7, COALESCE($8, 0), $9) RETURNING *`,
-            [via_fecha_salida || null, via_fecha_llegada || null, via_estatus || 'Pendiente', via_observaciones || null, via_fk_embarcacion, via_fk_capitan, via_fecha_estimada || null, via_presupuesto_estimado || 0, via_fk_zona || null]
+            VALUES (COALESCE($1, CURRENT_TIMESTAMP), $2, COALESCE($3, 'Pendiente'), $4, $5, $6, $7, $8::numeric, $9) RETURNING *`,
+            [fecha_salida, fecha_llegada, via_estatus || 'Pendiente', via_observaciones || null, fk_embarcacion, fk_capitan, fecha_estimada, presupuesto, fk_zona]
         );
         res.status(201).json(nuevoViaje.rows[0]);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Error al planificar el viaje' });
+        console.error('Error en crearViaje:', error);
+        res.status(500).json({ error: `Error al planificar: ${error.message}${error.detail ? ' - ' + error.detail : ''}` });
     }
 };
 
-// ACTUALIZAR VIAJE COMPLETO (Para el CRUD principal)
+// ACTUALIZAR UN VIAJE
 const updateViaje = async (req, res) => {
     try {
         const { id } = req.params;
-        const { 
-            via_fecha_salida, 
-            via_fecha_llegada, 
-            via_estatus, 
-            via_observaciones, 
-            via_fk_embarcacion, 
-            via_fk_capitan, 
-            via_fecha_estimada, 
-            via_presupuesto_estimado, 
-            via_fk_zona 
+        let {
+            via_fecha_salida, via_fecha_llegada, via_estatus, via_observaciones,
+            via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona
         } = req.body;
+
+        const fk_embarcacion = via_fk_embarcacion ? parseInt(via_fk_embarcacion) : null;
+        const fk_capitan = via_fk_capitan ? parseInt(via_fk_capitan) : null;
+        const fk_zona = via_fk_zona ? parseInt(via_fk_zona) : null;
+        const presupuesto = via_presupuesto_estimado ? parseFloat(via_presupuesto_estimado) : 0;
+
+        const fecha_salida = via_fecha_salida || null;
+        const fecha_llegada = via_fecha_llegada || null;
+        const fecha_estimada = via_fecha_estimada || null;
 
         const result = await pool.query(
             `UPDATE viaje 
             SET via_fecha_salida = $1, via_fecha_llegada = $2, via_estatus = $3, via_observaciones = $4, 
-                via_fk_embarcacion = $5, via_fk_capitan = $6, via_fecha_estimada = $7, via_presupuesto_estimado = $8, via_fk_zona = $9 
+                via_fk_embarcacion = $5, via_fk_capitan = $6, via_fecha_estimada = $7, via_presupuesto_estimado = $8::numeric, via_fk_zona = $9 
             WHERE via_id = $10 RETURNING *`,
-            [via_fecha_salida || null, via_fecha_llegada || null, via_estatus || 'Pendiente', via_observaciones || null, via_fk_embarcacion, via_fk_capitan, via_fecha_estimada || null, via_presupuesto_estimado || 0, via_fk_zona || null, id]
+            [fecha_salida, fecha_llegada, via_estatus || 'Pendiente', via_observaciones || null, fk_embarcacion, fk_capitan, fecha_estimada, presupuesto, fk_zona, id]
         );
 
         if (result.rows.length === 0) return res.status(404).json({ error: 'Viaje no encontrado' });
         res.json(result.rows[0]);
     } catch (error) {
-        console.error('Error al actualizar viaje:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        console.error('Error en updateViaje:', error);
+        res.status(500).json({ error: `Error al actualizar: ${error.message}${error.detail ? ' - ' + error.detail : ''}` });
     }
 };
 
@@ -132,7 +140,7 @@ const actualizarEstatusViaje = async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
-        const { via_estatus, via_fecha_llegada, via_observaciones, via_fk_puerto } = req.body; 
+        const { via_estatus, via_fecha_llegada, via_observaciones, via_fk_puerto } = req.body;
 
         await client.query('BEGIN');
 
@@ -160,7 +168,7 @@ const actualizarEstatusViaje = async (req, res) => {
                 "SELECT inst_latitud, inst_longitud FROM instalacion WHERE inst_id = $1",
                 [via_fk_puerto]
             );
-            
+
             if (puertoData.rows.length > 0) {
                 const { inst_latitud, inst_longitud } = puertoData.rows[0];
                 if (inst_latitud && inst_longitud) {
@@ -255,7 +263,7 @@ const finalizarViaje = async (req, res) => {
     try {
         const { id } = req.params;
         await client.query('BEGIN');
-        
+
         // 1. Obtener datos del viaje y la cooperativa
         const viajeData = await client.query(`
             SELECT v.*, c.coop_porcentaje_retencion 
@@ -276,7 +284,7 @@ const finalizarViaje = async (req, res) => {
             FROM viaje_detalle_captura 
             WHERE det_cap_fk_viaje = $1
         `, [id]);
-        
+
         const total_kg = parseFloat(capturas.rows[0].total_kg || 0);
         const total_ingresos = parseFloat(capturas.rows[0].total_ingresos || 0);
         const presupuesto = parseFloat(viaje.via_presupuesto_estimado || 0);
@@ -293,7 +301,7 @@ const finalizarViaje = async (req, res) => {
             reparto_cap = remanente * 0.30; // 30% del remanente al capitán
             reparto_trip = remanente * 0.70; // 70% del remanente a la tripulación
         }
-        
+
         // 4. Desembarcar tripulación
         await client.query("UPDATE viaje_personal SET via_per_enrolado = FALSE WHERE via_per_fk_viaje = $1", [id]);
 
@@ -321,7 +329,7 @@ const finalizarViaje = async (req, res) => {
                 ON CONFLICT DO NOTHING -- Evita duplicados si se re-finaliza
             `, [id, presupuesto, total_kg, total_kg]);
         }
-        
+
         await client.query('COMMIT');
         res.json({ mensaje: 'Viaje finalizado y liquidado correctamente', viaje: result.rows[0] });
     } catch (error) {

@@ -106,17 +106,46 @@ const ViajeCRUD = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
+    let updatedFormData = { ...formData, [name]: value };
+
     if (name === 'via_fk_embarcacion') {
-      const barco = embarcaciones.find(emb => emb.emb_id.toString() === value.toString());
       // Si por alguna razón se cambia de barco pero sigue siendo la misma coop, lo dejamos.
       // Pero si se selecciona un barco vacío, reseteamos el capitán.
       if (!value) {
-        setFormData({ ...formData, [name]: value, via_fk_capitan: '' });
-        return;
+        updatedFormData.via_fk_capitan = '';
       }
     }
     
-    setFormData({ ...formData, [name]: value });
+    // Autocalcular presupuesto base del Capitán si se cambian fechas o capitán
+    if (['via_fk_capitan', 'via_fecha_salida', 'via_fecha_estimada'].includes(name)) {
+      const capitanId = updatedFormData.via_fk_capitan;
+      if (capitanId) {
+         const capitan = personal.find(p => p.per_id.toString() === capitanId.toString());
+         if (capitan && parseFloat(capitan.per_salario_base || 0) > 0) {
+            let diasViaje = 1;
+            if (updatedFormData.via_fecha_salida && updatedFormData.via_fecha_estimada) {
+               const f1 = new Date(updatedFormData.via_fecha_salida);
+               const f2 = new Date(updatedFormData.via_fecha_estimada);
+               if (f2 > f1) {
+                  diasViaje = Math.max(1, Math.ceil(Math.abs(f2 - f1) / (1000 * 60 * 60 * 24)));
+               }
+            } else if (updatedFormData.via_fecha_estimada) {
+               const f1 = new Date();
+               const f2 = new Date(updatedFormData.via_fecha_estimada);
+               if (f2 > f1) diasViaje = Math.max(1, Math.ceil(Math.abs(f2 - f1) / (1000 * 60 * 60 * 24)));
+            }
+            
+            const costoCapitan = (parseFloat(capitan.per_salario_base) / 30) * diasViaje;
+            
+            // Solo sobreescribimos si el presupuesto es 0, o si acaba de seleccionar al capitán
+            if (parseFloat(formData.via_presupuesto_estimado || 0) === 0 || name === 'via_fk_capitan') {
+               updatedFormData.via_presupuesto_estimado = costoCapitan.toFixed(2);
+            }
+         }
+      }
+    }
+
+    setFormData(updatedFormData);
   };
 
   const handleCoopChange = (e) => {
@@ -413,6 +442,7 @@ const ViajeCRUD = () => {
                       <option value="">{selectedCoop ? 'Seleccione capitán...' : 'Primero seleccione cooperativa'}</option>
                       {personal
                         .filter(p => !selectedCoop || p.per_fk_cooperativa === selectedCoop)
+                        .filter(p => p.rol_nombre && p.rol_nombre.toLowerCase() === 'capitán')
                         .map(p => {
                           const isOcupado = personalOcupadoTotal.has(p.per_id) && (!currentRegistro || currentRegistro.via_fk_capitan !== p.per_id);
                           return (
