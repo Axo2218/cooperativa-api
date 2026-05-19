@@ -139,6 +139,8 @@ const DetallesViaje = ({ viaje: initialViaje, volver }) => {
     // --- ESTADOS DE BÚSQUEDA ---
     const [busquedaTripulante, setBusquedaTripulante] = useState('');
     const [busquedaEspecie, setBusquedaEspecie] = useState('');
+    const [mostrarSoloObjetivo, setMostrarSoloObjetivo] = useState(true);
+    const [activeTabInsumos, setActiveTabInsumos] = useState('Operativos');
 
     useEffect(() => {
         const cargarDatos = async () => {
@@ -729,17 +731,33 @@ const DetallesViaje = ({ viaje: initialViaje, volver }) => {
                             )}
 
                             {viaje.via_estatus === 'En Puerto' && (
-                                <form onSubmit={registrarCaptura} className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end animate-in fade-in zoom-in-95 duration-500">
-                                    <div className="md:col-span-2">
-                                        <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Especie</label>
-                                        <div className="space-y-2">
+                                <form onSubmit={registrarCaptura} className="bg-zinc-900/50 p-6 rounded-2xl border border-zinc-800 mb-8 animate-in fade-in zoom-in-95 duration-500 flex flex-col gap-4">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div className="w-full md:w-1/3 relative">
                                             <input 
                                                 type="text" 
                                                 placeholder="🔍 Buscar especie..." 
                                                 value={busquedaEspecie}
                                                 onChange={(e) => setBusquedaEspecie(e.target.value)}
-                                                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500/50 transition-colors"
+                                                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-400 focus:outline-none focus:border-emerald-500/50 transition-colors"
                                             />
+                                        </div>
+                                        {viaje.especies_objetivo && viaje.especies_objetivo.length > 0 && (
+                                            <label className="flex items-center gap-2 cursor-pointer bg-zinc-950/50 border border-zinc-800 px-3 py-2 rounded-lg transition-colors hover:border-emerald-500/50">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={!mostrarSoloObjetivo} 
+                                                    onChange={(e) => setMostrarSoloObjetivo(!e.target.checked)} 
+                                                    className="w-4 h-4 rounded border-zinc-600 text-emerald-500 focus:ring-emerald-500/50 bg-zinc-900"
+                                                />
+                                                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Registrar Pesca Colateral</span>
+                                            </label>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                                        <div className="md:col-span-5">
+                                            <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Especie</label>
                                             <select 
                                                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20" 
                                                 value={nuevaCaptura.especie_id} 
@@ -752,36 +770,44 @@ const DetallesViaje = ({ viaje: initialViaje, volver }) => {
                                                 <option value="">Seleccionar...</option>
                                                 {especies
                                                     .filter(e => e.esp_nombre_comun.toLowerCase().includes(busquedaEspecie.toLowerCase()))
+                                                    .filter(e => {
+                                                        if (mostrarSoloObjetivo && viaje.especies_objetivo && viaje.especies_objetivo.length > 0) {
+                                                            return viaje.especies_objetivo.includes(e.esp_id);
+                                                        }
+                                                        return true;
+                                                    })
                                                     .map(e => <option key={e.esp_id} value={e.esp_id}>{e.esp_nombre_comun}</option>)
                                                 }
                                             </select>
                                         </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">KG</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20" 
+                                                value={nuevaCaptura.kilogramos} 
+                                                onChange={(e) => setNuevaCaptura({ ...nuevaCaptura, kilogramos: e.target.value })} 
+                                                required 
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Precio/KG (Ref)</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20 font-mono" 
+                                                value={nuevaCaptura.precio} 
+                                                onChange={(e) => setNuevaCaptura({ ...nuevaCaptura, precio: e.target.value })} 
+                                                required 
+                                            />
+                                        </div>
+                                        <div className="md:col-span-3">
+                                            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+                                                Registrar
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">KG</label>
-                                        <input 
-                                            type="number" 
-                                            step="0.01"
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20" 
-                                            value={nuevaCaptura.kilogramos} 
-                                            onChange={(e) => setNuevaCaptura({ ...nuevaCaptura, kilogramos: e.target.value })} 
-                                            required 
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-zinc-500 uppercase mb-2">Precio/KG (Ref)</label>
-                                        <input 
-                                            type="number" 
-                                            step="0.01"
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:ring-2 ring-emerald-500/20 font-mono" 
-                                            value={nuevaCaptura.precio} 
-                                            onChange={(e) => setNuevaCaptura({ ...nuevaCaptura, precio: e.target.value })} 
-                                            required 
-                                        />
-                                    </div>
-                                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
-                                        Registrar
-                                    </button>
                                 </form>
                             )}
 
@@ -1195,21 +1221,41 @@ const DetallesViaje = ({ viaje: initialViaje, volver }) => {
                         </div>
 
                         <div className="flex-grow overflow-y-auto p-8 custom-scrollbar">
+                            <div className="flex gap-4 mb-6 border-b border-zinc-800 pb-4 overflow-x-auto custom-scrollbar">
+                                {['Operativos', 'Pesca', 'Materiales'].map(tab => {
+                                    const hasItems = inventarioBodega.some(inv => inv.ins_categoria === tab);
+                                    if (!hasItems) return null;
+                                    
+                                    let activeClasses = '';
+                                    if (tab === 'Operativos') activeClasses = 'bg-amber-500/20 text-amber-500 border border-amber-500/30';
+                                    if (tab === 'Pesca') activeClasses = 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30';
+                                    if (tab === 'Materiales') activeClasses = 'bg-blue-500/20 text-blue-500 border border-blue-500/30';
+                                    
+                                    const isActive = activeTabInsumos === tab;
+                                    
+                                    return (
+                                        <button
+                                            key={tab}
+                                            onClick={() => setActiveTabInsumos(tab)}
+                                            className={`px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all whitespace-nowrap ${
+                                                isActive 
+                                                    ? activeClasses 
+                                                    : 'bg-zinc-800/50 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
+                                            }`}
+                                        >
+                                            Insumos {tab}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
                             {['Operativos', 'Pesca', 'Materiales'].map((categoria) => {
+                                if (categoria !== activeTabInsumos) return null;
                                 const items = inventarioBodega.filter(inv => inv.ins_categoria === categoria);
                                 if (items.length === 0) return null;
 
                                 return (
-                                    <div key={categoria} className="mb-10 last:mb-0">
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className={`h-8 w-1.5 rounded-full ${
-                                                categoria === 'Operativos' ? 'bg-amber-500' : 
-                                                categoria === 'Pesca' ? 'bg-emerald-500' : 'bg-blue-500'
-                                            }`}></div>
-                                            <h4 className="text-lg font-black text-white uppercase tracking-wider">
-                                                Insumos {categoria}
-                                            </h4>
-                                        </div>
+                                    <div key={categoria} className="mb-4 animate-in fade-in duration-300">
 
                                         <table className="w-full text-left border-separate border-spacing-y-2">
                                             <thead>

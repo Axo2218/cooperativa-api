@@ -16,7 +16,8 @@ const obtenerViajes = async (req, res) => {
             e.emb_longitud,
             p.per_nombre || ' ' || p.per_apellidos AS capitan,
             z.zona_nombre,
-            inst.inst_nombre AS puerto_arribo
+            inst.inst_nombre AS puerto_arribo,
+            (SELECT COALESCE(json_agg(veo_fk_especie), '[]'::json) FROM viaje_especie_objetivo WHERE veo_fk_viaje = v.via_id) AS especies_objetivo
         FROM viaje v
         LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
         LEFT JOIN personal p ON v.via_fk_capitan = p.per_id
@@ -53,7 +54,8 @@ const getViajeById = async (req, res) => {
                 p.per_salario_base AS capitan_salario_base,
                 z.zona_nombre,
                 z.zona_cuadrante,
-                inst.inst_nombre AS puerto_arribo
+                inst.inst_nombre AS puerto_arribo,
+                (SELECT COALESCE(json_agg(veo_fk_especie), '[]'::json) FROM viaje_especie_objetivo WHERE veo_fk_viaje = v.via_id) AS especies_objetivo
             FROM viaje v
             LEFT JOIN embarcacion e ON v.via_fk_embarcacion = e.emb_id
             LEFT JOIN cooperativa c ON e.emb_fk_cooperativa = c.coop_id
@@ -72,10 +74,13 @@ const getViajeById = async (req, res) => {
 
 // CREAR UN NUEVO VIAJE (Zarpar o planificar)
 const crearViaje = async (req, res) => {
+    const client = await pool.connect();
     try {
+        await client.query('BEGIN');
         let {
             via_fecha_salida, via_fecha_llegada, via_estatus, via_observaciones,
-            via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona
+            via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona,
+            especies_objetivo
         } = req.body;
 
         // Conversión explícita de tipos para evitar errores de sintaxis en Postgres
@@ -88,26 +93,44 @@ const crearViaje = async (req, res) => {
         const fecha_llegada = via_fecha_llegada || null;
         const fecha_estimada = via_fecha_estimada || null;
 
-        const nuevoViaje = await pool.query(
+        const nuevoViaje = await client.query(
             `INSERT INTO viaje 
             (via_fecha_salida, via_fecha_llegada, via_estatus, via_observaciones, via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona) 
             VALUES (COALESCE($1, CURRENT_TIMESTAMP), $2, COALESCE($3, 'Pendiente'), $4, $5, $6, $7, $8::numeric, $9) RETURNING *`,
             [fecha_salida, fecha_llegada, via_estatus || 'Pendiente', via_observaciones || null, fk_embarcacion, fk_capitan, fecha_estimada, presupuesto, fk_zona]
         );
-        res.status(201).json(nuevoViaje.rows[0]);
+        
+        const via_id = nuevoViaje.rows[0].via_id;
+        if (especies_objetivo && Array.isArray(especies_objetivo) && especies_objetivo.length > 0) {
+            for (const esp_id of especies_objetivo) {
+                await client.query('INSERT INTO viaje_especie_objetivo (veo_fk_viaje, veo_fk_especie) VALUES ($1, $2)', [via_id, parseInt(esp_id)]);
+            }
+        }
+        await client.query('COMMIT');
+        
+        // Add the array to the returned object so frontend doesn't need to reload
+        const resultObj = nuevoViaje.rows[0];
+        resultObj.especies_objetivo = especies_objetivo || [];
+        res.status(201).json(resultObj);
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error en crearViaje:', error);
         res.status(500).json({ error: `Error al planificar: ${error.message}${error.detail ? ' - ' + error.detail : ''}` });
+    } finally {
+        client.release();
     }
 };
 
 // ACTUALIZAR UN VIAJE
 const updateViaje = async (req, res) => {
+    const client = await pool.connect();
     try {
+        await client.query('BEGIN');
         const { id } = req.params;
         let {
             via_fecha_salida, via_fecha_llegada, via_estatus, via_observaciones,
-            via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona
+            via_fk_embarcacion, via_fk_capitan, via_fecha_estimada, via_presupuesto_estimado, via_fk_zona,
+            especies_objetivo
         } = req.body;
 
         const fk_embarcacion = via_fk_embarcacion ? parseInt(via_fk_embarcacion) : null;
@@ -119,7 +142,7 @@ const updateViaje = async (req, res) => {
         const fecha_llegada = via_fecha_llegada || null;
         const fecha_estimada = via_fecha_estimada || null;
 
-        const result = await pool.query(
+        const result = await client.query(
             `UPDATE viaje 
             SET via_fecha_salida = $1, via_fecha_llegada = $2, via_estatus = $3, via_observaciones = $4, 
                 via_fk_embarcacion = $5, via_fk_capitan = $6, via_fecha_estimada = $7, via_presupuesto_estimado = $8::numeric, via_fk_zona = $9 
@@ -127,11 +150,31 @@ const updateViaje = async (req, res) => {
             [fecha_salida, fecha_llegada, via_estatus || 'Pendiente', via_observaciones || null, fk_embarcacion, fk_capitan, fecha_estimada, presupuesto, fk_zona, id]
         );
 
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Viaje no encontrado' });
-        res.json(result.rows[0]);
+        if (result.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Viaje no encontrado' });
+        }
+        
+        if (especies_objetivo !== undefined) {
+            await client.query('DELETE FROM viaje_especie_objetivo WHERE veo_fk_viaje = $1', [id]);
+            if (Array.isArray(especies_objetivo) && especies_objetivo.length > 0) {
+                for (const esp_id of especies_objetivo) {
+                    await client.query('INSERT INTO viaje_especie_objetivo (veo_fk_viaje, veo_fk_especie) VALUES ($1, $2)', [id, parseInt(esp_id)]);
+                }
+            }
+        }
+        
+        await client.query('COMMIT');
+        
+        const resultObj = result.rows[0];
+        resultObj.especies_objetivo = especies_objetivo || [];
+        res.json(resultObj);
     } catch (error) {
+        await client.query('ROLLBACK');
         console.error('Error en updateViaje:', error);
         res.status(500).json({ error: `Error al actualizar: ${error.message}${error.detail ? ' - ' + error.detail : ''}` });
+    } finally {
+        client.release();
     }
 };
 

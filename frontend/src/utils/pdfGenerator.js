@@ -240,7 +240,9 @@ export const generateLiquidacionPDF = (viaje, capturas, tripulacion) => {
     // Calcular la parte proporcional de la tripulación
     let totalPuntos = 0;
     const tripulacionConPuntos = (tripulacion || []).filter(t => t.id !== 'cap').map(t => {
-      const puntos = t.rol_puntos_reparto || 1;
+      let puntos = parseFloat(t.rol_puntos_reparto);
+      if (isNaN(puntos) || puntos === 0) puntos = 1;
+      
       totalPuntos += puntos;
       return { ...t, puntos };
     });

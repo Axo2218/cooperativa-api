@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronDown, Ship, Database, DollarSign, Users, ShieldAlert, Settings, Anchor, Map } from 'lucide-react';
+import { ChevronDown, Ship, Database, DollarSign, Users, ShieldAlert, Settings, Anchor, Map, LogOut } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();
@@ -213,9 +213,16 @@ const Navigation = () => {
         {/* USER PROFILE */}
         <div className="text-sm font-medium text-zinc-400 flex items-center gap-3">
           <span className="hidden md:inline">Super Admin</span>
-          <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center border border-emerald-500/30">
-            <Settings size={16} />
-          </div>
+          <button 
+            onClick={() => {
+              localStorage.removeItem('isAuthenticated');
+              window.location.reload();
+            }}
+            className="w-8 h-8 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 flex items-center justify-center border border-red-500/30 transition-colors"
+            title="Cerrar Sesión"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </nav>

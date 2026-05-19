@@ -7,6 +7,7 @@ const ViajeCRUD = () => {
   const [embarcaciones, setEmbarcaciones] = useState([]);
   const [personal, setPersonal] = useState([]);
   const [zonas, setZonas] = useState([]);
+  const [especies, setEspecies] = useState([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -36,7 +37,8 @@ const ViajeCRUD = () => {
     via_fk_capitan: '',
     via_fecha_estimada: '',
     via_presupuesto_estimado: 0,
-    via_fk_zona: ''
+    via_fk_zona: '',
+    especies_objetivo: []
   });
 
   useEffect(() => {
@@ -46,6 +48,7 @@ const ViajeCRUD = () => {
     fetchZonas();
     fetchTripulacionGlobal();
     fetchCooperativas();
+    fetchEspecies();
   }, []);
 
   const fetchCooperativas = async () => {
@@ -54,6 +57,15 @@ const ViajeCRUD = () => {
       setCooperativas(data);
     } catch (error) {
       console.error('Error al cargar cooperativas:', error);
+    }
+  };
+
+  const fetchEspecies = async () => {
+    try {
+      const { data } = await axios.get('/especies').catch(() => ({ data: [] }));
+      setEspecies(data);
+    } catch (error) {
+      console.error('Error al cargar especies:', error);
     }
   };
 
@@ -148,6 +160,17 @@ const ViajeCRUD = () => {
     setFormData(updatedFormData);
   };
 
+  const handleEspecieToggle = (esp_id) => {
+    setFormData(prev => {
+      const current = prev.especies_objetivo || [];
+      if (current.includes(esp_id)) {
+        return { ...prev, especies_objetivo: current.filter(id => id !== esp_id) };
+      } else {
+        return { ...prev, especies_objetivo: [...current, esp_id] };
+      }
+    });
+  };
+
   const handleCoopChange = (e) => {
     const value = e.target.value;
     const newCoop = value ? parseInt(value) : null;
@@ -174,7 +197,8 @@ const ViajeCRUD = () => {
         via_fk_capitan: registro.via_fk_capitan || '',
         via_fecha_estimada: formatDateOnlyForInput(registro.via_fecha_estimada),
         via_presupuesto_estimado: registro.via_presupuesto_estimado || 0,
-        via_fk_zona: registro.via_fk_zona || ''
+        via_fk_zona: registro.via_fk_zona || '',
+        especies_objetivo: registro.especies_objetivo || []
       });
       // Detectar cooperativa al editar
       const barco = embarcaciones.find(emb => emb.emb_id === registro.via_fk_embarcacion);
@@ -191,7 +215,8 @@ const ViajeCRUD = () => {
         via_fk_capitan: '',
         via_fecha_estimada: '',
         via_presupuesto_estimado: 0,
-        via_fk_zona: ''
+        via_fk_zona: '',
+        especies_objetivo: []
       });
     }
     setIsModalOpen(true);
@@ -542,16 +567,24 @@ const ViajeCRUD = () => {
                   </div>
                 </div>
 
-                <div className="md:col-span-2 space-y-1">
-                  <label className="text-sm font-medium text-zinc-300">Observaciones del Viaje</label>
-                  <textarea
-                    name="via_observaciones"
-                    value={formData.via_observaciones}
-                    onChange={handleInputChange}
-                    rows="3"
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                    placeholder="Condiciones climáticas, reportes de averías, etc..."
-                  ></textarea>
+
+
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Especies Objetivo <span className="text-[10px] text-emerald-500 ml-2 font-black">PARA FILTRO EN REGISTRO DE PESCA</span></label>
+                  <p className="text-xs text-zinc-500">Seleccione las especies a las que se dirige exclusivamente el viaje. Solo estas aparecerán inicialmente en la liquidación.</p>
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 gap-3 max-h-48 overflow-y-auto">
+                    {especies.map(esp => (
+                      <label key={esp.esp_id} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={(formData.especies_objetivo || []).includes(esp.esp_id)}
+                          onChange={() => handleEspecieToggle(esp.esp_id)}
+                          className="w-4 h-4 rounded border-zinc-600 text-emerald-500 focus:ring-emerald-500/50 bg-zinc-900"
+                        />
+                        <span className="text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">{esp.esp_nombre_comun}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
               </div>

@@ -1,8 +1,10 @@
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import topoBg from './assets/topo-bg.png';
 
 // Components
+import Login from './components/Login';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import DetallesViajeWrapper from './components/DetallesViajeWrapper';
@@ -47,6 +49,45 @@ import CooperativaCRUD from './components/CooperativaCRUD';
 import AlertaSistemaCRUD from './components/AlertaSistemaCRUD';
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const authStatus = localStorage.getItem('isAuthenticated');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = (status) => {
+    setIsAuthenticated(status);
+    localStorage.setItem('isAuthenticated', 'true');
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#18181b',
+              color: '#fff',
+              border: '1px solid #27272a',
+              fontSize: '14px',
+              borderRadius: '12px',
+              padding: '12px 20px',
+            },
+            success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+            error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+          }}
+        />
+        <Login onLogin={handleLogin} />
+      </>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Toaster 
